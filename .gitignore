@@ -1,0 +1,74 @@
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Build / output
+dist/
+**/dist/
+dist-ssr/
+build/
+out/
+.vite/
+*.tsbuildinfo
+
+# Environment & secrets (keep *.example)
+.env
+.env.*
+!.env.example
+!**/.env.example
+*.pem
+*.key
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Coverage & tests
+coverage/
+.nyc_output/
+*.lcov
+
+# Caches
+.cache/
+.parcel-cache/
+.turbo/
+.eslintcache
+.stylelintcache
+*.local
+
+# OS
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Editors / IDEs
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+*~
+
+# Supabase local
+supabase/.temp/
+supabase/.branches/
+
+# Uploads / temp runtime files
+uploads/
+tmp/
+temp/
+*.tmp
+
+# Optional local tooling
+.vercel/
+.netlify/
+.wrangler/
