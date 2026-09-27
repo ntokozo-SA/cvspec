@@ -8,13 +8,7 @@ interface FileDropProps {
   onFile: (file: File) => void
 }
 
-export function FileDrop({
-  accept,
-  label,
-  hint,
-  disabled,
-  onFile,
-}: FileDropProps): ReactElement {
+export function FileDrop({ accept, label, hint, disabled, onFile }: FileDropProps): ReactElement {
   const inputRef = useRef<HTMLInputElement>(null)
   const [active, setActive] = useState(false)
 
@@ -49,7 +43,8 @@ export function FileDrop({
         onDrop={onDrop}
       >
         <div className="dropzone__title">{label}</div>
-        <div className="dropzone__hint">{hint}</div>
+        <div className="dropzone__hint dropzone__hint--desktop">{hint}</div>
+        <div className="dropzone__hint dropzone__hint--mobile">Tap to choose a file</div>
       </button>
       <input
         ref={inputRef}

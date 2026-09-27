@@ -27,6 +27,7 @@
 - `resumes` — uploaded and parsed resumes
 - `job_specs` — job postings from link, document, or text
 - `comparisons` — scored match results and recommendations
+- `applications` — jobs saved from external boards via the Chrome extension, with pipeline status
 
 RLS: users can only access rows where `user_id = auth.uid()`.
 
@@ -37,6 +38,10 @@ POST/GET/DELETE  /api/resumes
 POST/GET/DELETE  /api/job-specs
 POST/GET         /api/comparisons
 GET              /api/comparisons/:id
+POST/GET         /api/applications
+PATCH/DELETE     /api/applications/:id
+POST             /api/applications/:id/analyze
+POST             /api/extension/handoff
 ```
 
 All routes except auth verify the Supabase JWT.

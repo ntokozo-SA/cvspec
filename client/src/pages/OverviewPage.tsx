@@ -74,9 +74,7 @@ export function OverviewPage(): ReactElement {
           {jobs[0] ? (
             <p>
               Latest:{' '}
-              <strong>
-                {jobs[0].parsed_json?.title ?? jobs[0].title ?? jobs[0].source_type}
-              </strong>
+              <strong>{jobs[0].parsed_json?.title ?? jobs[0].title ?? jobs[0].source_type}</strong>
             </p>
           ) : (
             <p className="field-hint">No job specs yet.</p>

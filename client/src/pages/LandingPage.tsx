@@ -35,9 +35,7 @@ export function LandingPage(): ReactElement {
                   <div className="score-card__top">
                     <div>
                       <div className="score-card__label">Match for this posting</div>
-                      <h2 style={{ fontSize: '1.35rem', marginTop: '0.35rem' }}>
-                        Senior Frontend Engineer
-                      </h2>
+                      <h2 className="score-card__job">Senior Frontend Engineer</h2>
                     </div>
                     <div className="score-ring" style={{ ['--score' as string]: '72%' }}>
                       72%
@@ -81,7 +79,9 @@ export function LandingPage(): ReactElement {
               <article className="flow-step">
                 <div className="flow-step__num">02</div>
                 <h3>Add the job spec</h3>
-                <p>Paste text, upload a document, or provide a posting link when it is scrapeable.</p>
+                <p>
+                  Paste text, upload a document, or provide a posting link when it is scrapeable.
+                </p>
               </article>
               <article className="flow-step">
                 <div className="flow-step__num">03</div>

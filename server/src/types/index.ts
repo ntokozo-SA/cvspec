@@ -22,6 +22,7 @@ export interface JobSpecParsed {
 
 export interface Recommendation {
   section: string
+  original?: string
   suggestion: string
   rationale: string
 }

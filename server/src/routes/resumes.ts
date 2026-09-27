@@ -37,6 +37,8 @@ resumesRouter.post('/', upload.single('file'), async (req, res, next) => {
       return
     }
 
+    const parsed = await parseResumeBuffer(file.buffer, file.originalname, file.mimetype)
+
     const supabase = getSupabaseAdmin()
     const storagePath = `${user.id}/${Date.now()}-${file.originalname}`
 
@@ -48,8 +50,6 @@ resumesRouter.post('/', upload.single('file'), async (req, res, next) => {
       })
 
     if (uploadError) throw uploadError
-
-    const parsed = await parseResumeBuffer(file.buffer, file.originalname)
 
     const { data, error } = await supabase
       .from('resumes')

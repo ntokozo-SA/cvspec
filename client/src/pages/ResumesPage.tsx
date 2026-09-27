@@ -65,13 +65,17 @@ export function ResumesPage(): ReactElement {
         </div>
       </div>
 
-      {error && <div className="form-error" style={{ marginBottom: '1rem' }}>{error}</div>}
+      {error && (
+        <div className="form-error" style={{ marginBottom: '1rem' }}>
+          {error}
+        </div>
+      )}
 
       <div className="panel panel-pad" style={{ marginBottom: '1rem' }}>
         <FileDrop
           accept=".pdf,.doc,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-          label={busy ? 'Uploading and parsing...' : 'Drop a resume here, or click to browse'}
-          hint="PDF or DOCX. Max size depends on the parser provider."
+          label={busy ? 'Uploading and parsing...' : 'Add a resume'}
+          hint="Drop a PDF or DOCX, or click to browse."
           disabled={!online || busy}
           onFile={(file) => void onFile(file)}
         />

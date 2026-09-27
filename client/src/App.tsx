@@ -8,6 +8,7 @@ import { OverviewPage } from './pages/OverviewPage'
 import { ResumesPage } from './pages/ResumesPage'
 import { JobSpecsPage } from './pages/JobSpecsPage'
 import { ComparePage } from './pages/ComparePage'
+import { ApplicationsPage } from './pages/ApplicationsPage'
 import { ComparisonDetailPage, HistoryPage } from './pages/HistoryPage'
 
 export default function App(): ReactElement {
@@ -24,6 +25,7 @@ export default function App(): ReactElement {
               <Route path="resumes" element={<ResumesPage />} />
               <Route path="job-specs" element={<JobSpecsPage />} />
               <Route path="compare" element={<ComparePage />} />
+              <Route path="applications" element={<ApplicationsPage />} />
               <Route path="history" element={<HistoryPage />} />
               <Route path="history/:id" element={<ComparisonDetailPage />} />
             </Route>

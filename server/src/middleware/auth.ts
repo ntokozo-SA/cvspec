@@ -28,11 +28,7 @@ export function getAuth(req: Request): AuthedRequest {
   return req as unknown as AuthedRequest
 }
 
-export async function requireAuth(
-  req: Request,
-  res: Response,
-  next: NextFunction,
-): Promise<void> {
+export async function requireAuth(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const header = req.headers.authorization
     if (!header?.startsWith('Bearer ')) {

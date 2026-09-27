@@ -1,10 +1,7 @@
 import mammoth from 'mammoth'
 import pdfParse from 'pdf-parse'
 
-export async function extractTextFromDocument(
-  buffer: Buffer,
-  fileName: string,
-): Promise<string> {
+export async function extractTextFromDocument(buffer: Buffer, fileName: string): Promise<string> {
   const lower = fileName.toLowerCase()
   if (lower.endsWith('.pdf')) {
     const parsed = await pdfParse(buffer)

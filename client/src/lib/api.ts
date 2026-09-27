@@ -1,5 +1,7 @@
 import { supabase } from './supabase'
 import type {
+  Application,
+  ApplicationStatus,
   Comparison,
   JobSpec,
   Recommendation,
@@ -53,18 +55,19 @@ async function apiFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
 const demoResumes: Resume[] = []
 const demoJobSpecs: JobSpec[] = []
 const demoComparisons: Comparison[] = []
+const demoApplications: Application[] = []
 
-function useDemoMode(): boolean {
+function isDemoMode(): boolean {
   return !import.meta.env.VITE_SUPABASE_URL || import.meta.env.VITE_DEMO_MODE === 'true'
 }
 
 export async function listResumes(): Promise<Resume[]> {
-  if (useDemoMode()) return [...demoResumes]
+  if (isDemoMode()) return [...demoResumes]
   return apiFetch<Resume[]>('/resumes')
 }
 
 export async function uploadResume(file: File): Promise<Resume> {
-  if (useDemoMode()) {
+  if (isDemoMode()) {
     const resume: Resume = {
       id: crypto.randomUUID(),
       user_id: 'demo',
@@ -98,7 +101,7 @@ export async function uploadResume(file: File): Promise<Resume> {
 }
 
 export async function deleteResume(id: string): Promise<void> {
-  if (useDemoMode()) {
+  if (isDemoMode()) {
     const index = demoResumes.findIndex((item) => item.id === id)
     if (index >= 0) demoResumes.splice(index, 1)
     return
@@ -107,7 +110,7 @@ export async function deleteResume(id: string): Promise<void> {
 }
 
 export async function listJobSpecs(): Promise<JobSpec[]> {
-  if (useDemoMode()) return [...demoJobSpecs]
+  if (isDemoMode()) return [...demoJobSpecs]
   return apiFetch<JobSpec[]>('/job-specs')
 }
 
@@ -117,12 +120,12 @@ export async function createJobSpec(input: {
   url?: string
   file?: File
 }): Promise<JobSpec> {
-  if (useDemoMode()) {
+  if (isDemoMode()) {
     const title =
       input.sourceType === 'link'
-        ? input.url ?? 'Linked job posting'
+        ? (input.url ?? 'Linked job posting')
         : input.sourceType === 'document'
-          ? input.file?.name ?? 'Uploaded job spec'
+          ? (input.file?.name ?? 'Uploaded job spec')
           : 'Pasted job posting'
 
     const job: JobSpec = {
@@ -176,7 +179,7 @@ export async function createJobSpec(input: {
 }
 
 export async function deleteJobSpec(id: string): Promise<void> {
-  if (useDemoMode()) {
+  if (isDemoMode()) {
     const index = demoJobSpecs.findIndex((item) => item.id === id)
     if (index >= 0) demoJobSpecs.splice(index, 1)
     return
@@ -185,12 +188,12 @@ export async function deleteJobSpec(id: string): Promise<void> {
 }
 
 export async function listComparisons(): Promise<Comparison[]> {
-  if (useDemoMode()) return [...demoComparisons]
+  if (isDemoMode()) return [...demoComparisons]
   return apiFetch<Comparison[]>('/comparisons')
 }
 
 export async function getComparison(id: string): Promise<Comparison> {
-  if (useDemoMode()) {
+  if (isDemoMode()) {
     const found = demoComparisons.find((item) => item.id === id)
     if (!found) throw new Error('Comparison not found')
     return found
@@ -198,11 +201,8 @@ export async function getComparison(id: string): Promise<Comparison> {
   return apiFetch<Comparison>(`/comparisons/${id}`)
 }
 
-export async function createComparison(
-  resumeId: string,
-  jobSpecId: string,
-): Promise<Comparison> {
-  if (useDemoMode()) {
+export async function createComparison(resumeId: string, jobSpecId: string): Promise<Comparison> {
+  if (isDemoMode()) {
     const resume = demoResumes.find((item) => item.id === resumeId)
     const jobSpec = demoJobSpecs.find((item) => item.id === jobSpecId)
     if (!resume || !jobSpec) throw new Error('Resume and job spec are required')
@@ -215,8 +215,7 @@ export async function createComparison(
       ),
     )
     const missing = required.filter((skill) => !matched.includes(skill))
-    const score =
-      required.length === 0 ? 0 : Math.round((matched.length / required.length) * 100)
+    const score = required.length === 0 ? 0 : Math.round((matched.length / required.length) * 100)
 
     const recommendations: Recommendation[] = missing.slice(0, 3).map((skill) => ({
       section: 'Skills / Experience',
@@ -254,4 +253,38 @@ export async function createComparison(
     method: 'POST',
     body: JSON.stringify({ resumeId, jobSpecId }),
   })
+}
+
+export async function listApplications(): Promise<Application[]> {
+  if (isDemoMode()) return [...demoApplications]
+  return apiFetch<Application[]>('/applications')
+}
+
+export async function updateApplication(
+  id: string,
+  patch: { status?: ApplicationStatus; resumeId?: string | null },
+): Promise<Application> {
+  if (isDemoMode()) {
+    const found = demoApplications.find((item) => item.id === id)
+    if (!found) throw new Error('Application not found')
+    if (patch.status) {
+      found.status = patch.status
+      found.status_updated_at = new Date().toISOString()
+    }
+    if (patch.resumeId !== undefined) found.resume_id = patch.resumeId
+    return { ...found }
+  }
+  return apiFetch<Application>(`/applications/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(patch),
+  })
+}
+
+export async function deleteApplication(id: string): Promise<void> {
+  if (isDemoMode()) {
+    const index = demoApplications.findIndex((item) => item.id === id)
+    if (index >= 0) demoApplications.splice(index, 1)
+    return
+  }
+  await apiFetch<void>(`/applications/${id}`, { method: 'DELETE' })
 }

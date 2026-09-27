@@ -8,6 +8,7 @@ import {
   type ReactNode,
 } from 'react'
 import type { Session, User } from '@supabase/supabase-js'
+import { initExtensionBridge, signOutExtension, syncExtensionSession } from '../lib/extensionBridge'
 import { isSupabaseConfigured, supabase } from '../lib/supabase'
 
 interface AuthContextValue {
@@ -47,22 +48,26 @@ export function AuthProvider({ children }: { children: ReactNode }): ReactNode {
     }
 
     let mounted = true
+    const stopBridge = initExtensionBridge()
 
     supabase.auth.getSession().then(({ data }) => {
       if (!mounted) return
       setSession(data.session)
       setUser(data.session?.user ?? null)
       setLoading(false)
+      syncExtensionSession(data.session)
     })
 
     const { data: subscription } = supabase.auth.onAuthStateChange((_event, next) => {
       setSession(next)
       setUser(next?.user ?? null)
       setLoading(false)
+      syncExtensionSession(next)
     })
 
     return () => {
       mounted = false
+      stopBridge()
       subscription.subscription.unsubscribe()
     }
   }, [demoMode])
@@ -99,6 +104,7 @@ export function AuthProvider({ children }: { children: ReactNode }): ReactNode {
     setUser(null)
     setSession(null)
     if (supabase) {
+      signOutExtension()
       await supabase.auth.signOut()
     }
   }, [])

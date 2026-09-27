@@ -11,11 +11,16 @@ export default defineConfig({
       manifest: {
         name: 'CV Specs',
         short_name: 'CV Specs',
-        description: 'Compare your resume against a job posting and get concrete edit recommendations.',
+        description:
+          'Compare your resume against a job posting and get concrete edit recommendations.',
         theme_color: '#0B5F4A',
         background_color: '#E6EAE7',
         display: 'standalone',
+        orientation: 'portrait-primary',
         start_url: '/',
+        scope: '/',
+        lang: 'en',
+        categories: ['productivity', 'business'],
         icons: [
           {
             src: '/icons/icon-192.png',
@@ -26,6 +31,12 @@ export default defineConfig({
             src: '/icons/icon-512.png',
             sizes: '512x512',
             type: 'image/png',
+          },
+          {
+            src: '/icons/icon-512.png',
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'maskable',
           },
         ],
       },

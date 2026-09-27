@@ -46,6 +46,7 @@ export interface JobSpecParsed {
 
 export interface Recommendation {
   section: string
+  original?: string
   suggestion: string
   rationale: string
 }
@@ -62,6 +63,37 @@ export interface Comparison {
   created_at: string
   resume?: Resume
   job_spec?: JobSpec
+}
+
+export type ApplicationStatus = 'saved' | 'applied' | 'interviewing' | 'offer' | 'rejected'
+
+export type JobBoard = 'linkedin' | 'indeed' | 'glassdoor' | 'other'
+
+export interface Application {
+  id: string
+  user_id: string
+  job_spec_id: string
+  comparison_id: string | null
+  resume_id: string | null
+  title: string | null
+  company: string | null
+  location: string | null
+  board: JobBoard
+  source_url: string
+  status: ApplicationStatus
+  status_updated_at: string
+  created_at: string
+  job_spec?: Pick<JobSpec, 'id' | 'source_url' | 'parsed_json' | 'created_at'> | null
+  comparison?: Pick<
+    Comparison,
+    | 'id'
+    | 'match_score'
+    | 'matched_skills'
+    | 'missing_skills'
+    | 'recommendations'
+    | 'resume_id'
+    | 'created_at'
+  > | null
 }
 
 export interface ApiErrorBody {

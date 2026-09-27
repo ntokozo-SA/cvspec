@@ -5,7 +5,7 @@ import { getAuth } from '../middleware/auth.js'
 import { getSupabaseAdmin } from '../middleware/auth.js'
 import { extractTextFromDocument } from '../services/documentText.js'
 import { extractTextFromUrl } from '../services/linkExtractor.js'
-import { extractJobSpec } from '../services/openai.js'
+import { createJobSpecFromText } from '../services/jobSpecCreator.js'
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -42,8 +42,7 @@ jobSpecsRouter.post('/', upload.single('file'), async (req, res, next) => {
     const { user } = getAuth(req)
     const supabase = getSupabaseAdmin()
 
-    const sourceType =
-      typeof req.body.sourceType === 'string' ? req.body.sourceType : undefined
+    const sourceType = typeof req.body.sourceType === 'string' ? req.body.sourceType : undefined
 
     let rawText = ''
     let sourceUrl: string | null = null
@@ -88,22 +87,13 @@ jobSpecsRouter.post('/', upload.single('file'), async (req, res, next) => {
       }
     }
 
-    const parsed = await extractJobSpec(rawText)
-
-    const { data, error } = await supabase
-      .from('job_specs')
-      .insert({
-        user_id: user.id,
-        source_type: resolvedType,
-        source_url: sourceUrl,
-        storage_path: storagePath,
-        raw_text: rawText,
-        parsed_json: parsed,
-      })
-      .select('*')
-      .single()
-
-    if (error) throw error
+    const data = await createJobSpecFromText({
+      userId: user.id,
+      sourceType: resolvedType,
+      rawText,
+      sourceUrl,
+      storagePath,
+    })
     res.status(201).json(data)
   } catch (err) {
     next(err)
@@ -133,11 +123,7 @@ jobSpecsRouter.delete('/:id', async (req, res, next) => {
       await supabase.storage.from('job-specs').remove([existing.storage_path])
     }
 
-    const { error } = await supabase
-      .from('job_specs')
-      .delete()
-      .eq('id', id)
-      .eq('user_id', user.id)
+    const { error } = await supabase.from('job_specs').delete().eq('id', id).eq('user_id', user.id)
 
     if (error) throw error
     res.status(204).send()

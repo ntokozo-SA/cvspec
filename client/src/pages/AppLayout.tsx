@@ -1,6 +1,6 @@
 import type { ReactElement } from 'react'
 import { Navigate, Outlet } from 'react-router-dom'
-import { AppNav, AppSidebar, OfflineBanner } from '../components/Layout'
+import { AppBottomNav, AppNav, AppSidebar, OfflineBanner } from '../components/Layout'
 import { useAuth } from '../hooks/useAuth'
 import { useOnline } from '../hooks/useOnline'
 
@@ -22,7 +22,7 @@ export function AppLayout(): ReactElement {
   const online = useOnline()
 
   return (
-    <div className="shell">
+    <div className="shell shell--app">
       <OfflineBanner online={online} />
       <AppNav />
       <div className="app-frame">
@@ -31,6 +31,7 @@ export function AppLayout(): ReactElement {
           <Outlet />
         </main>
       </div>
+      <AppBottomNav />
     </div>
   )
 }

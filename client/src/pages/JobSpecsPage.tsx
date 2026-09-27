@@ -85,7 +85,11 @@ export function JobSpecsPage(): ReactElement {
         </div>
       </div>
 
-      {error && <div className="form-error" style={{ marginBottom: '1rem' }}>{error}</div>}
+      {error && (
+        <div className="form-error" style={{ marginBottom: '1rem' }}>
+          {error}
+        </div>
+      )}
 
       <div className="panel panel-pad" style={{ marginBottom: '1rem' }}>
         <div className="tabs" role="tablist">
@@ -150,8 +154,8 @@ export function JobSpecsPage(): ReactElement {
         {tab === 'document' && (
           <FileDrop
             accept=".pdf,.doc,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-            label={busy ? 'Parsing document...' : 'Drop a job-spec PDF or DOCX'}
-            hint="Use this when the posting is a downloadable file."
+            label={busy ? 'Parsing document...' : 'Add a job-spec document'}
+            hint="Drop a PDF or DOCX, or click to browse."
             disabled={!online || busy}
             onFile={(file) => void submitFile(file)}
           />

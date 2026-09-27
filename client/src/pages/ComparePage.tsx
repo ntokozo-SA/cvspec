@@ -131,9 +131,7 @@ export function ComparePage(): ReactElement {
         <Button type="submit" disabled={!online || busy || !resumeId || !jobSpecId}>
           {busy ? 'Scoring and drafting edits...' : 'Run comparison'}
         </Button>
-        {!online && (
-          <p className="field-hint">Comparisons are disabled while offline.</p>
-        )}
+        {!online && <p className="field-hint">Comparisons are disabled while offline.</p>}
       </form>
     </div>
   )

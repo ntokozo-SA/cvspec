@@ -39,7 +39,11 @@ export function HistoryPage(): ReactElement {
         </Link>
       </div>
 
-      {error && <div className="form-error" style={{ marginBottom: '1rem' }}>{error}</div>}
+      {error && (
+        <div className="form-error" style={{ marginBottom: '1rem' }}>
+          {error}
+        </div>
+      )}
 
       {loading ? (
         <div className="loading-block">Loading history...</div>
@@ -168,6 +172,11 @@ export function ComparisonDetailPage(): ReactElement {
           {(item.recommendations ?? []).map((rec, index) => (
             <article key={`${rec.section}-${index}`} className="rec-item">
               <div className="rec-item__tag">{rec.section}</div>
+              {rec.original && (
+                <p className="rec-item__original">
+                  <span>Current:</span> {rec.original}
+                </p>
+              )}
               <h4>{rec.suggestion}</h4>
               <p>{rec.rationale}</p>
             </article>

@@ -1,0 +1,27 @@
+{
+  "name": "cvspec-extension",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "lint": "npm run lint --prefix ..",
+    "format": "npm run format --prefix .."
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.117.2",
+    "cvspec": "file:..",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0"
+  },
+  "devDependencies": {
+    "@crxjs/vite-plugin": "^3.0.0",
+    "@types/chrome": "^0.3.0",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^5.2.0",
+    "typescript": "~6.0.2",
+    "vite": "^8.3.0"
+  }
+}
