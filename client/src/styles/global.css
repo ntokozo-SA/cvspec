@@ -766,7 +766,8 @@ p {
 }
 
 .app-content {
-  padding: var(--page-pad-y) var(--page-pad-x) calc(1.5rem + var(--bottom-nav-h) + var(--safe-bottom));
+  padding: var(--page-pad-y) var(--page-pad-x)
+    calc(1.5rem + var(--bottom-nav-h) + var(--safe-bottom));
   width: min(100%, 920px);
   margin-inline: auto;
 }
