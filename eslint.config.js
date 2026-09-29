@@ -12,6 +12,7 @@ export default tseslint.config(
       '**/node_modules/**',
       '**/coverage/**',
       'client/dev-dist/**',
+      'infra/cdk.out/**',
       'package-lock.json',
       '**/package-lock.json',
     ],

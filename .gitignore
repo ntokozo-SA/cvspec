@@ -44,7 +44,9 @@ coverage/
 # OS
 .DS_Store
 Thumbs.db
+ehthumbs.db
 Desktop.ini
+$RECYCLE.BIN/
 
 # Editors / IDEs
 .vscode/*
@@ -72,3 +74,18 @@ temp/
 .vercel/
 .netlify/
 .wrangler/
+
+# AWS / CDK
+cdk.out/
+.cdk.staging/
+.aws-sam/
+
+# Python (Lambda assets / scripts)
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Browser extension packaging
+*.crx
+*.xpi

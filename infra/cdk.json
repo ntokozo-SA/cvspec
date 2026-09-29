@@ -1,0 +1,12 @@
+{
+  "app": "npx tsx bin/cvspec.ts",
+  "watch": {
+    "include": ["bin/**", "lib/**"]
+  },
+  "context": {
+    "region": "af-south-1",
+    "secretName": "cvspec/app",
+    "supabaseUrl": "https://jzfktgldqggmpslsijqj.supabase.co",
+    "openaiModel": "gpt-4o-mini"
+  }
+}
