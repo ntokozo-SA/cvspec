@@ -21,16 +21,13 @@ const JOB_BOARD_MATCHES = [
 
 export default defineManifest(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), 'VITE_')
-  const webMatches = Array.from(
-    new Set(
-      [toMatchPattern(env.VITE_WEB_URL), 'https://cvspec.com/*', 'https://*.cvspec.com/*'].filter(
-        (value): value is string => Boolean(value),
-      ),
-    ),
+  const webMatches = [toMatchPattern(env.VITE_WEB_URL)].filter((value): value is string =>
+    Boolean(value),
   )
-  const apiMatches = [toMatchPattern(env.VITE_API_URL), toMatchPattern(env.VITE_SUPABASE_URL)].filter(
-    (value): value is string => Boolean(value),
-  )
+  const apiMatches = [
+    toMatchPattern(env.VITE_API_URL),
+    toMatchPattern(env.VITE_SUPABASE_URL),
+  ].filter((value): value is string => Boolean(value))
 
   return {
     manifest_version: 3,
@@ -39,12 +36,16 @@ export default defineManifest(({ mode }) => {
       'Save job postings from LinkedIn, Indeed and Glassdoor to CVSpec and tailor your resume before you apply.',
     version: pkg.version,
     icons: {
-      16: 'icons/icon-192.png',
-      48: 'icons/icon-192.png',
-      128: 'icons/icon-192.png',
+      16: 'icons/icon-16.png',
+      48: 'icons/icon-48.png',
+      128: 'icons/icon-128.png',
     },
     action: {
       default_title: 'CVSpec',
+      default_icon: {
+        16: 'icons/icon-16.png',
+        48: 'icons/icon-48.png',
+      },
       default_popup: 'src/popup/index.html',
     },
     background: {

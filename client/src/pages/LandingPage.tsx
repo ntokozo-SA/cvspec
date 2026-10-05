@@ -113,6 +113,7 @@ export function LandingPage(): ReactElement {
         <div className="container site-footer__inner">
           <span>CV Specs</span>
           <span>Resume and job-spec comparison for targeted applications.</span>
+          <Link to="/privacy">Privacy policy</Link>
         </div>
       </footer>
     </div>

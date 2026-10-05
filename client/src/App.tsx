@@ -10,6 +10,7 @@ import { JobSpecsPage } from './pages/JobSpecsPage'
 import { ComparePage } from './pages/ComparePage'
 import { ApplicationsPage } from './pages/ApplicationsPage'
 import { ComparisonDetailPage, HistoryPage } from './pages/HistoryPage'
+import { PrivacyPage } from './pages/PrivacyPage'
 
 export default function App(): ReactElement {
   return (
@@ -19,6 +20,7 @@ export default function App(): ReactElement {
           <Route path="/" element={<LandingPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/signup" element={<SignupPage />} />
+          <Route path="/privacy" element={<PrivacyPage />} />
           <Route element={<ProtectedRoute />}>
             <Route path="/app" element={<AppLayout />}>
               <Route index element={<OverviewPage />} />

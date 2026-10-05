@@ -89,3 +89,4 @@ venv/
 # Browser extension packaging
 *.crx
 *.xpi
+cvspec-extension-*.zip

@@ -30,8 +30,7 @@ function isExtensionPage(sender: chrome.runtime.MessageSender): boolean {
 }
 
 function isCvspecWebApp(sender: chrome.runtime.MessageSender): boolean {
-  const origin = senderOrigin(sender)
-  return origin === WEB_ORIGIN || origin === 'https://cvspec.com' || origin === 'https://www.cvspec.com'
+  return senderOrigin(sender) === WEB_ORIGIN
 }
 
 async function handle(
