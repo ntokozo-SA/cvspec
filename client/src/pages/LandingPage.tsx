@@ -1,6 +1,6 @@
 import type { ReactElement } from 'react'
 import { Link } from 'react-router-dom'
-import { PublicNav } from '../components/Layout'
+import { PublicNav, SiteFooter } from '../components/Layout'
 import { useAuth } from '../hooks/useAuth'
 
 const extensionUrl = import.meta.env.VITE_CHROME_EXTENSION_URL
@@ -344,13 +344,7 @@ export function LandingPage(): ReactElement {
         </section>
       </main>
 
-      <footer className="site-footer">
-        <div className="container site-footer__inner">
-          <span>CV Specs</span>
-          <span>ATS match scanning and job search tracking in one workspace.</span>
-          <Link to="/privacy">Privacy policy</Link>
-        </div>
-      </footer>
+      <SiteFooter />
     </div>
   )
 }

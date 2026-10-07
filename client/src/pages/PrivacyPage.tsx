@@ -1,7 +1,5 @@
 import type { ReactElement } from 'react'
-import { BrandMark } from '../components/Layout'
-
-const CONTACT_EMAIL = 'admin@peoplecurated.com'
+import { BrandMark, CONTACT_EMAIL, SiteFooter } from '../components/Layout'
 
 export function PrivacyPage(): ReactElement {
   return (
@@ -96,6 +94,7 @@ export function PrivacyPage(): ReactElement {
           Questions about this policy: <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>
         </p>
       </main>
+      <SiteFooter />
     </div>
   )
 }

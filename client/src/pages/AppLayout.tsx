@@ -1,6 +1,6 @@
 import type { ReactElement } from 'react'
 import { Navigate, Outlet } from 'react-router-dom'
-import { AppBottomNav, AppNav, AppSidebar, OfflineBanner } from '../components/Layout'
+import { AppBottomNav, AppFooter, AppNav, AppSidebar, OfflineBanner } from '../components/Layout'
 import { useAuth } from '../hooks/useAuth'
 import { useOnline } from '../hooks/useOnline'
 
@@ -29,6 +29,7 @@ export function AppLayout(): ReactElement {
         <AppSidebar />
         <main className="app-content">
           <Outlet />
+          <AppFooter />
         </main>
       </div>
       <AppBottomNav />

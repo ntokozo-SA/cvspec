@@ -1,6 +1,6 @@
 import { useState, type FormEvent, type ReactElement } from 'react'
 import { Link, Navigate, useNavigate } from 'react-router-dom'
-import { BrandMark, Button } from '../components/Layout'
+import { BrandMark, Button, SiteFooter } from '../components/Layout'
 import { useAuth } from '../hooks/useAuth'
 
 export function LoginPage(): ReactElement {
@@ -86,6 +86,7 @@ export function LoginPage(): ReactElement {
           </p>
         </div>
       </main>
+      <SiteFooter />
     </div>
   )
 }
@@ -179,6 +180,7 @@ export function SignupPage(): ReactElement {
           </p>
         </div>
       </main>
+      <SiteFooter />
     </div>
   )
 }

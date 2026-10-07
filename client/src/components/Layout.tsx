@@ -13,6 +13,92 @@ export function BrandMark({ compact = false }: { compact?: boolean }): ReactElem
   )
 }
 
+export const CONTACT_EMAIL = 'admin@peoplecurated.com'
+const COMPANY_NAME = 'People Curated Technologies'
+
+export function SiteFooter(): ReactElement {
+  const year = new Date().getFullYear()
+
+  return (
+    <footer className="site-footer">
+      <div className="container">
+        <div className="site-footer__top">
+          <div className="site-footer__brand">
+            <BrandMark />
+            <p>
+              ATS match scanning and job search tracking in one workspace. Score your fit, tailor
+              your CV, and manage every application from a single dashboard.
+            </p>
+          </div>
+          <div className="site-footer__cols">
+            <nav aria-label="Product">
+              <p className="site-footer__heading">Product</p>
+              <ul className="site-footer__links">
+                <li>
+                  <Link to="/app/compare">Pre-submit scan</Link>
+                </li>
+                <li>
+                  <Link to="/app/applications">Job tracker</Link>
+                </li>
+                <li>
+                  <Link to="/app/resumes">Resumes</Link>
+                </li>
+              </ul>
+            </nav>
+            <nav aria-label="Account">
+              <p className="site-footer__heading">Account</p>
+              <ul className="site-footer__links">
+                <li>
+                  <Link to="/login">Log in</Link>
+                </li>
+                <li>
+                  <Link to="/signup">Create account</Link>
+                </li>
+              </ul>
+            </nav>
+            <nav aria-label="Company">
+              <p className="site-footer__heading">Company</p>
+              <ul className="site-footer__links">
+                <li>
+                  <Link to="/privacy">Privacy policy</Link>
+                </li>
+                <li>
+                  <a href={`mailto:${CONTACT_EMAIL}`}>Contact us</a>
+                </li>
+              </ul>
+            </nav>
+          </div>
+        </div>
+        <div className="site-footer__bottom">
+          <span>
+            &copy; {year} {COMPANY_NAME}. All rights reserved.
+          </span>
+          <span className="site-footer__owner">
+            CV Specs is software under <strong>{COMPANY_NAME}</strong>.
+          </span>
+        </div>
+      </div>
+    </footer>
+  )
+}
+
+export function AppFooter(): ReactElement {
+  const year = new Date().getFullYear()
+
+  return (
+    <footer className="app-footer">
+      <span>
+        &copy; {year} CV Specs is software under <strong>{COMPANY_NAME}</strong>. All rights
+        reserved.
+      </span>
+      <span className="app-footer__links">
+        <Link to="/privacy">Privacy policy</Link>
+        <a href={`mailto:${CONTACT_EMAIL}`}>Contact</a>
+      </span>
+    </footer>
+  )
+}
+
 export function PublicNav(): ReactElement {
   const { user } = useAuth()
 

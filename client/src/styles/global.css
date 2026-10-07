@@ -1014,19 +1014,101 @@ p {
 }
 
 .site-footer {
-  padding: 1.25rem 0 calc(1.5rem + var(--safe-bottom));
+  margin-top: auto;
+  padding: 2.5rem 0 calc(1.5rem + var(--safe-bottom));
+  border-top: 1px solid var(--line);
+  background: var(--surface);
   color: var(--muted);
   font-size: 0.875rem;
 }
 
-.site-footer__inner {
+.site-footer__top {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 2rem;
+}
+
+.site-footer__brand p {
+  margin-top: 0.85rem;
+  max-width: 24rem;
+  line-height: 1.6;
+}
+
+.site-footer__cols {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.5rem;
+}
+
+.site-footer__heading {
+  margin-bottom: 0.75rem;
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.site-footer__links {
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
+  gap: 0.55rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
 
 .site-footer a {
   color: inherit;
+  transition: color 0.15s ease;
+}
+
+.site-footer__links a:hover,
+.site-footer__links a:focus-visible {
+  color: var(--forest);
+}
+
+.site-footer__bottom {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-top: 2rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--line);
+  font-size: 0.8rem;
+}
+
+.site-footer__owner strong,
+.app-footer strong {
+  color: var(--ink-soft);
+  font-weight: 650;
+}
+
+.app-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 2.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.app-footer__links {
+  display: flex;
+  gap: 1rem;
+}
+
+.app-footer a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.app-footer a:hover {
+  color: var(--forest);
 }
 
 /* Legal */
@@ -1719,9 +1801,24 @@ p {
     gap: 1rem;
   }
 
-  .site-footer__inner {
+  .site-footer {
+    padding-top: 3.5rem;
+  }
+
+  .site-footer__top {
+    grid-template-columns: 1.3fr 2fr;
+    gap: 3rem;
+  }
+
+  .site-footer__cols {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .site-footer__bottom,
+  .app-footer {
     flex-direction: row;
     justify-content: space-between;
+    align-items: center;
   }
 
   .match-hero {
