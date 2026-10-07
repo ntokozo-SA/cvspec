@@ -21,8 +21,14 @@ export function PublicNav(): ReactElement {
       <div className="site-nav__inner">
         <BrandMark />
         <div className="nav-links">
+          <a className="nav-link" href="#why-crm">
+            Why a CRM
+          </a>
           <a className="nav-link" href="#how-it-works">
             How it works
+          </a>
+          <a className="nav-link" href="#compare">
+            Compare
           </a>
         </div>
         <div className="nav-actions">
