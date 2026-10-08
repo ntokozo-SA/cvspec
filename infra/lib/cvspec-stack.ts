@@ -1,3 +1,5 @@
+import * as fs from 'node:fs'
+import * as os from 'node:os'
 import * as path from 'node:path'
 import * as cdk from 'aws-cdk-lib'
 import * as cloudfront from 'aws-cdk-lib/aws-cloudfront'
@@ -20,6 +22,28 @@ const SECRET_KEYS = [
   'RESUMEPARSER_API_KEY',
 ] as const
 
+// OneDrive turns synced files into cloud reparse points, which CDK's asset fingerprinting
+// mistakes for symlinks and fails to read. Staging plain copies outside the repo avoids that.
+function stageAsPlainFiles(src: string, name: string): string {
+  const dest = path.join(os.tmpdir(), name)
+  fs.rmSync(dest, { recursive: true, force: true })
+  copyAsPlainFiles(src, dest)
+  return dest
+}
+
+function copyAsPlainFiles(src: string, dest: string): void {
+  fs.mkdirSync(dest, { recursive: true })
+  for (const name of fs.readdirSync(src)) {
+    const from = path.join(src, name)
+    const to = path.join(dest, name)
+    if (fs.statSync(from).isDirectory()) {
+      copyAsPlainFiles(from, to)
+    } else {
+      fs.writeFileSync(to, fs.readFileSync(from))
+    }
+  }
+}
+
 export interface CvSpecStackProps extends cdk.StackProps {
   secretName: string
   supabaseUrl: string
@@ -30,7 +54,10 @@ export class CvSpecStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props: CvSpecStackProps) {
     super(scope, id, props)
 
-    const clientDist = path.join(__dirname, '../../client/dist')
+    const clientDist = stageAsPlainFiles(
+      path.join(__dirname, '../../client/dist'),
+      'cvspec-client-dist',
+    )
     const appSecret = secretsmanager.Secret.fromSecretNameV2(this, 'AppSecret', props.secretName)
 
     // No NAT gateway: tasks sit in public subnets with a public IP for outbound calls
