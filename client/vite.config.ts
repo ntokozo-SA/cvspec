@@ -9,8 +9,8 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg', 'icons/icon-192.png', 'icons/icon-512.png'],
       manifest: {
-        name: 'CV Specs',
-        short_name: 'CV Specs',
+        name: 'CV Spec',
+        short_name: 'CV Spec',
         description:
           'Compare your resume against a job posting and get concrete edit recommendations.',
         theme_color: '#0B5F4A',

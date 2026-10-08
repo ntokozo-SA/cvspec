@@ -1,6 +1,7 @@
 import { defineManifest } from '@crxjs/vite-plugin'
 import { loadEnv } from 'vite'
 import pkg from './package.json' with { type: 'json' }
+import { BOARDS } from './src/shared/boards.ts'
 
 function toMatchPattern(raw: string | undefined): string | null {
   if (!raw) return null
@@ -12,12 +13,7 @@ function toMatchPattern(raw: string | undefined): string | null {
   }
 }
 
-const JOB_BOARD_MATCHES = [
-  'https://www.linkedin.com/*',
-  'https://*.indeed.com/*',
-  'https://*.glassdoor.com/*',
-  'https://*.glassdoor.co.uk/*',
-]
+const JOB_BOARD_MATCHES = Object.values(BOARDS).flatMap((board) => [...board.matches])
 
 export default defineManifest(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), 'VITE_')
@@ -33,7 +29,7 @@ export default defineManifest(({ mode }) => {
     manifest_version: 3,
     name: 'CVSpec',
     description:
-      'Save job postings from LinkedIn, Indeed and Glassdoor to CVSpec and tailor your resume before you apply.',
+      'Save jobs from LinkedIn, Indeed, Glassdoor, ZipRecruiter and 18 more job sites to CVSpec and tailor your resume before you apply.',
     version: pkg.version,
     icons: {
       16: 'icons/icon-16.png',

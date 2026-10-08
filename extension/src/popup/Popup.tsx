@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState, type ReactElement } from 'react'
 import { scanJsonLdJobPosting } from '../content/adapters/jsonLd'
+import { BOARD_IDS, boardForUrl } from '../shared/boards'
 import { WEB_URL } from '../shared/config'
-import { sendMessage } from '../shared/messages'
-import type { Application, AuthState, Board, ScrapedJob } from '../shared/types'
+import { sendMessage, type ExtractJobRequest } from '../shared/messages'
+import type { Application, AuthState, ScrapedJob } from '../shared/types'
 
 const STATUS_LABELS: Record<Application['status'], string> = {
   saved: 'Saved',
@@ -12,12 +13,15 @@ const STATUS_LABELS: Record<Application['status'], string> = {
   rejected: 'Rejected',
 }
 
-function boardFor(url: string): Board {
-  const host = new URL(url).hostname
-  if (host.endsWith('linkedin.com')) return 'linkedin'
-  if (host.endsWith('indeed.com')) return 'indeed'
-  if (host.includes('glassdoor.')) return 'glassdoor'
-  return 'other'
+async function extractWithAdapter(tabId: number): Promise<ScrapedJob | null> {
+  try {
+    const job: unknown = await chrome.tabs.sendMessage(tabId, {
+      type: 'EXTRACT_JOB',
+    } satisfies ExtractJobRequest)
+    return (job as ScrapedJob | null) ?? null
+  } catch {
+    return null
+  }
 }
 
 function openTab(url: string): void {
@@ -60,16 +64,20 @@ export function Popup(): ReactElement {
     try {
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
       if (!tab?.id || !tab.url?.startsWith('http')) throw new Error('This page cannot be scanned.')
-      const [result] = await chrome.scripting.executeScript({
-        target: { tabId: tab.id },
-        func: scanJsonLdJobPosting,
-      })
-      const job = result?.result as ScrapedJob | null | undefined
+      let job = await extractWithAdapter(tab.id)
+      if (!job) {
+        const [result] = await chrome.scripting.executeScript({
+          target: { tabId: tab.id },
+          func: scanJsonLdJobPosting,
+        })
+        job = (result?.result as ScrapedJob | null | undefined) ?? null
+      }
       if (!job) {
         setScan({ kind: 'error', message: 'No job posting data found on this page.' })
         return
       }
-      setScan({ kind: 'found', job: { ...job, board: boardFor(job.url) } })
+      const board = job.board === 'other' ? boardForUrl(job.url) : job.board
+      setScan({ kind: 'found', job: { ...job, board } })
     } catch (err) {
       setScan({
         kind: 'error',
@@ -135,8 +143,9 @@ export function Popup(): ReactElement {
             {scan.kind === 'idle' && (
               <>
                 <p className="muted">
-                  On LinkedIn, Indeed and Glassdoor the Save and Tailor buttons appear next to Apply.
-                  On other job sites, scan the page for a posting.
+                  On LinkedIn, Indeed, Glassdoor and {BOARD_IDS.length - 3} more job boards the Save
+                  and Tailor buttons appear next to Apply. On other job sites, scan the page for a
+                  posting.
                 </p>
                 <button type="button" className="btn btn--secondary" onClick={() => void scanPage()}>
                   Scan this page

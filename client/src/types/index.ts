@@ -67,7 +67,30 @@ export interface Comparison {
 
 export type ApplicationStatus = 'saved' | 'applied' | 'interviewing' | 'offer' | 'rejected'
 
-export type JobBoard = 'linkedin' | 'indeed' | 'glassdoor' | 'other'
+export type JobBoard =
+  | 'linkedin'
+  | 'indeed'
+  | 'glassdoor'
+  | 'ziprecruiter'
+  | 'google_jobs'
+  | 'careerbuilder'
+  | 'monster'
+  | 'simplyhired'
+  | 'talention'
+  | 'flexjobs'
+  | 'weworkremotely'
+  | 'remoteco'
+  | 'dice'
+  | 'wellfound'
+  | 'hired'
+  | 'builtin'
+  | 'handshake'
+  | 'snagajob'
+  | 'upwork'
+  | 'fiverr'
+  | 'idealist'
+  | 'peoplecurated'
+  | 'other'
 
 export interface Application {
   id: string

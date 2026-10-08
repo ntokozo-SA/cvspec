@@ -1,4 +1,5 @@
 import { createRoot, type Root } from 'react-dom/client'
+import type { ExtractJobRequest } from '../shared/messages'
 import { findAdapter } from './adapters'
 import { App } from './ui/App'
 import styles from './ui/styles.css?inline'
@@ -170,5 +171,10 @@ new MutationObserver(scheduleSync).observe(document.documentElement, {
   subtree: true,
 })
 window.addEventListener('popstate', scheduleSync)
+chrome.runtime.onMessage.addListener((message: ExtractJobRequest, sender, sendResponse) => {
+  if (sender.id !== chrome.runtime.id || message?.type !== 'EXTRACT_JOB') return false
+  sendResponse(findAdapter(new URL(window.location.href))?.extract() ?? null)
+  return false
+})
 console.info('[CVSpec] Job board helper loaded.')
 sync()

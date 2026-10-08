@@ -38,5 +38,5 @@ app.use(
 )
 
 app.listen(port, () => {
-  console.log(`CV Specs API listening on http://localhost:${port}`)
+  console.log(`CV Spec API listening on http://localhost:${port}`)
 })

@@ -18,6 +18,11 @@ export type ExtensionRequest =
   | { type: 'ANALYZE'; applicationId: string; resumeId?: string }
   | { type: 'UPDATE_STATUS'; applicationId: string; status: ApplicationStatus }
 
+/** Sent from the popup to the job board content script in the active tab. */
+export interface ExtractJobRequest {
+  type: 'EXTRACT_JOB'
+}
+
 export interface ResponseMap {
   GET_AUTH: AuthState
   HANDOFF: AuthState

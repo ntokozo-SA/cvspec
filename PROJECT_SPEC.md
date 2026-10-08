@@ -1,8 +1,8 @@
-# CV Specs — Project Spec
+# CV Spec — Project Spec
 
 ## Project Overview
 
-**CV Specs** is a Progressive Web App that helps users compare their resume against a specific job posting. The user provides a job spec (via link, uploaded document, or pasted text) and their resume (via upload), and the app returns:
+**CV Spec** is a Progressive Web App that helps users compare their resume against a specific job posting. The user provides a job spec (via link, uploaded document, or pasted text) and their resume (via upload), and the app returns:
 
 1. A compatibility match percentage
 2. A breakdown of matched vs. missing skills/requirements

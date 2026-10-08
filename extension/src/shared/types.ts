@@ -1,4 +1,6 @@
-export type Board = 'linkedin' | 'indeed' | 'glassdoor' | 'other'
+import type { Board } from './boards'
+
+export type { Board }
 
 export type ApplicationStatus = 'saved' | 'applied' | 'interviewing' | 'offer' | 'rejected'
 

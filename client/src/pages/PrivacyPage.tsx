@@ -14,7 +14,7 @@ export function PrivacyPage(): ReactElement {
         <p className="legal-page__updated">Last updated: 5 October 2026</p>
 
         <p>
-          This policy explains what data CV Specs (the web app and the CVSpec Chrome extension)
+          This policy explains what data CV Spec (the web app and the CVSpec Chrome extension)
           collects, how it is used, and the choices you have.
         </p>
 
@@ -40,20 +40,23 @@ export function PrivacyPage(): ReactElement {
 
         <h2>Chrome extension</h2>
         <p>
-          The extension only reads a job board page (LinkedIn, Indeed or Glassdoor) to show its
-          buttons and to collect the posting details when you click Save to CVSpec or Tailor before
-          applying. It does not record your browsing history, read other pages, or collect data from
-          pages you have not acted on.
+          The extension only reads job pages on supported job boards (LinkedIn, Indeed, Glassdoor,
+          ZipRecruiter, Google for Jobs, CareerBuilder, Monster, SimplyHired, Talention, FlexJobs, We
+          Work Remotely, Remote.co, Dice, Wellfound, Hired, Built In, Handshake, Snagajob, Upwork,
+          Fiverr, Idealist and People Curated) to show its buttons and to collect the posting details when you click
+          Save to CVSpec or Tailor before applying. On Google it only acts on Google Jobs results.
+          It does not record your browsing history, read other pages, or collect data from pages you
+          have not acted on.
         </p>
         <p>
-          The extension stores your CV Specs login session and your last selected resume in
+          The extension stores your CV Spec login session and your last selected resume in
           Chrome&apos;s local extension storage so you stay signed in. Signing out of the web app or
           the extension removes the session.
         </p>
 
         <h2>How we use your data</h2>
         <p>
-          We use your data only to provide CV Specs: storing your resumes and saved jobs, scoring
+          We use your data only to provide CV Spec: storing your resumes and saved jobs, scoring
           them against each other, generating resume recommendations, and tracking your
           applications. We do not sell your data, use it for advertising, or use it to determine
           creditworthiness or for lending.

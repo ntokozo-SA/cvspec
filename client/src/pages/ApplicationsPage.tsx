@@ -17,6 +17,25 @@ const BOARD_LABELS: Record<JobBoard, string> = {
   linkedin: 'LinkedIn',
   indeed: 'Indeed',
   glassdoor: 'Glassdoor',
+  ziprecruiter: 'ZipRecruiter',
+  google_jobs: 'Google for Jobs',
+  careerbuilder: 'CareerBuilder',
+  monster: 'Monster',
+  simplyhired: 'SimplyHired',
+  talention: 'Talention',
+  flexjobs: 'FlexJobs',
+  weworkremotely: 'We Work Remotely',
+  remoteco: 'Remote.co',
+  dice: 'Dice',
+  wellfound: 'Wellfound',
+  hired: 'Hired',
+  builtin: 'Built In',
+  handshake: 'Handshake',
+  snagajob: 'Snagajob',
+  upwork: 'Upwork',
+  fiverr: 'Fiverr',
+  idealist: 'Idealist',
+  peoplecurated: 'People Curated',
   other: 'Other site',
 }
 
@@ -108,7 +127,10 @@ export function ApplicationsPage(): ReactElement {
       <div className="page-header">
         <div>
           <h1>Applications</h1>
-          <p>Jobs saved from LinkedIn, Indeed and Glassdoor with the CVSpec Chrome extension.</p>
+          <p>
+            Jobs saved from LinkedIn, Indeed, Glassdoor, ZipRecruiter and other job boards with the
+            CVSpec Chrome extension.
+          </p>
         </div>
         {extension.installed && (
           <span className={`ext-chip${extension.connected ? ' is-connected' : ''}`}>
@@ -145,8 +167,8 @@ export function ApplicationsPage(): ReactElement {
           title="No saved jobs yet"
           text={
             extension.installed
-              ? 'Open a job on LinkedIn, Indeed or Glassdoor and click Save to CVSpec next to the Apply button.'
-              : 'Install the CVSpec Chrome extension, then click Save to CVSpec on any LinkedIn, Indeed or Glassdoor job.'
+              ? 'Open a job on LinkedIn, Indeed, Glassdoor, ZipRecruiter or another supported board and click Save to CVSpec next to the Apply button.'
+              : 'Install the CVSpec Chrome extension, then click Save to CVSpec on any job from LinkedIn, Indeed, Glassdoor, ZipRecruiter and other supported boards.'
           }
         />
       ) : visible.length === 0 ? (

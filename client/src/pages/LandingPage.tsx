@@ -11,7 +11,7 @@ const trackingValues = [
     title: 'Centralized Job Vault',
     problem: 'Jobs scattered across 10 different sites & tabs',
     solution:
-      '1-click capture from LinkedIn, Indeed, Glassdoor, or forwarded emails into a single Kanban board.',
+      '1-click capture from LinkedIn, Indeed, Glassdoor, ZipRecruiter and 18 more job boards, or forwarded emails, into a single Kanban board.',
   },
   {
     num: '02',
@@ -68,6 +68,62 @@ const stepDetails = [
     text: 'Track recruiter contacts, schedule follow-ups, and store tailored resume versions for every role.',
   },
 ] as const
+
+const iconProps = {
+  width: 22,
+  height: 22,
+  viewBox: '0 0 24 24',
+  fill: 'none',
+  stroke: 'currentColor',
+  strokeWidth: 2,
+  strokeLinecap: 'round',
+  strokeLinejoin: 'round',
+} as const
+
+const presubmitFeatures: { title: string; text: string; icon: ReactElement }[] = [
+  {
+    title: 'Instant Match Score',
+    text: 'One clear number that tells you how well your CV fits this exact posting, in seconds.',
+    icon: (
+      <svg {...iconProps}>
+        <path d="M12 3a9 9 0 1 0 9 9" />
+        <path d="M12 12l5-5" />
+        <path d="M16 3h5v5" />
+      </svg>
+    ),
+  },
+  {
+    title: 'CV to Job Match Analysis',
+    text: 'See which skills and keywords the job spec asks for, which you already show, and which are missing.',
+    icon: (
+      <svg {...iconProps}>
+        <rect x="3" y="4" width="7" height="16" rx="1" />
+        <rect x="14" y="4" width="7" height="16" rx="1" />
+        <path d="M10 9h4M10 15h4" />
+      </svg>
+    ),
+  },
+  {
+    title: 'Instant CV Fixes',
+    text: 'Bullet-level rewrite suggestions you can paste straight into your CV before you apply.',
+    icon: (
+      <svg {...iconProps}>
+        <path d="M4 20l4-1 11-11a2.1 2.1 0 0 0-3-3L5 16l-1 4z" />
+        <path d="M14 7l3 3" />
+      </svg>
+    ),
+  },
+  {
+    title: 'ATS Friendly Scan',
+    text: 'Catch the formatting traps, like tables, columns and odd headings, that make applicant tracking systems misread your CV.',
+    icon: (
+      <svg {...iconProps}>
+        <path d="M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6l8-3z" />
+        <path d="M8.5 12l2.5 2.5 4.5-5" />
+      </svg>
+    ),
+  },
+]
 
 type Mark = 'yes' | 'no' | 'partial'
 
@@ -233,6 +289,158 @@ export function LandingPage(): ReactElement {
                 </div>
               </div>
             </div>
+          </div>
+        </section>
+
+        <section className="presubmit" id="pre-submit">
+          <div className="presubmit__glow" aria-hidden />
+          <div className="container presubmit__grid">
+            <div className="presubmit__copy">
+              <p className="presubmit__eyebrow">
+                <span className="presubmit__pulse" aria-hidden />
+                Free pre-submit check
+              </p>
+              <h2 className="presubmit__title">
+                Run your free pre-submit check before you hit{' '}
+                <span className="presubmit__hl">apply</span> on your next job application.
+              </h2>
+              <p className="presubmit__lede">
+                Know your chances. <strong>Don&apos;t apply into a black hole.</strong>
+              </p>
+              <ul className="presubmit__features">
+                {presubmitFeatures.map((feature) => (
+                  <li className="presubmit-feature" key={feature.title}>
+                    <span className="presubmit-feature__icon" aria-hidden>
+                      {feature.icon}
+                    </span>
+                    <div>
+                      <h3>{feature.title}</h3>
+                      <p>{feature.text}</p>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+              <div className="presubmit__cta">
+                <Link className="btn btn-signal" to={scanTo}>
+                  Run My Free Check
+                </Link>
+                <span className="presubmit__note">No credit card. Results in seconds.</span>
+              </div>
+            </div>
+
+            <figure
+              className="presubmit__shot"
+              role="img"
+              aria-label="Preview of a CVSpec pre-submit report showing an 84% match score, keyword gaps, a suggested CV fix and ATS checks"
+            >
+              <div className="shot-window" aria-hidden>
+                <div className="shot-window__bar">
+                  <span />
+                  <span />
+                  <span />
+                  <div className="shot-window__url">cvspec.com/app/compare</div>
+                </div>
+                <div className="shot-window__body">
+                  <div className="shot-cv">
+                    <div className="shot-cv__beam" />
+                    <div className="shot-cv__name">Alex Morgan</div>
+                    <div className="shot-cv__role">Frontend Engineer</div>
+                    <div className="shot-cv__heading">Experience</div>
+                    <div className="shot-cv__row">
+                      <span className="shot-cv__bar" style={{ width: '38%' }} />
+                      <span className="shot-cv__kw">React</span>
+                      <span className="shot-cv__bar" style={{ width: '22%' }} />
+                    </div>
+                    <div className="shot-cv__row">
+                      <span className="shot-cv__bar" style={{ width: '64%' }} />
+                      <span className="shot-cv__kw">TypeScript</span>
+                    </div>
+                    <div className="shot-cv__row">
+                      <span className="shot-cv__bar" style={{ width: '30%' }} />
+                      <span className="shot-cv__kw shot-cv__kw--miss">GraphQL</span>
+                      <span className="shot-cv__bar" style={{ width: '28%' }} />
+                    </div>
+                    <div className="shot-cv__row">
+                      <span className="shot-cv__bar" style={{ width: '82%' }} />
+                    </div>
+                    <div className="shot-cv__heading">Skills</div>
+                    <div className="shot-cv__row">
+                      <span className="shot-cv__kw">CSS</span>
+                      <span className="shot-cv__kw">Vite</span>
+                      <span className="shot-cv__kw shot-cv__kw--miss">Testing Library</span>
+                    </div>
+                    <div className="shot-cv__row">
+                      <span className="shot-cv__bar" style={{ width: '56%' }} />
+                    </div>
+                    <div className="shot-cv__heading">Education</div>
+                    <div className="shot-cv__row">
+                      <span className="shot-cv__bar" style={{ width: '70%' }} />
+                    </div>
+                    <div className="shot-cv__row">
+                      <span className="shot-cv__bar" style={{ width: '44%' }} />
+                    </div>
+                    <div className="shot-cv__row">
+                      <span className="shot-cv__bar" style={{ width: '60%' }} />
+                    </div>
+                  </div>
+
+                  <div className="shot-report">
+                    <div className="shot-report__top">
+                      <div className="score-ring" style={{ ['--score' as string]: '84%' }}>
+                        84%
+                      </div>
+                      <div>
+                        <div className="shot-report__label">Match score</div>
+                        <div className="shot-report__job">Senior Frontend Engineer</div>
+                        <span className="shot-report__delta">+18 pts with 3 fixes</span>
+                      </div>
+                    </div>
+
+                    <div className="shot-meters">
+                      <div className="shot-meter">
+                        <span>Skills</span>
+                        <div className="shot-meter__track">
+                          <i style={{ width: '73%' }} />
+                        </div>
+                        <strong>8/11</strong>
+                      </div>
+                      <div className="shot-meter">
+                        <span>Keywords</span>
+                        <div className="shot-meter__track">
+                          <i style={{ width: '64%' }} />
+                        </div>
+                        <strong>64%</strong>
+                      </div>
+                      <div className="shot-meter">
+                        <span>Experience</span>
+                        <div className="shot-meter__track">
+                          <i style={{ width: '90%' }} />
+                        </div>
+                        <strong>90%</strong>
+                      </div>
+                    </div>
+
+                    <div className="shot-fix">
+                      <div className="shot-report__label">Instant fix</div>
+                      <del>Worked on frontend features for the web app.</del>
+                      <ins>Shipped 14 React and GraphQL features, cutting page load time by 32%.</ins>
+                    </div>
+
+                    <ul className="shot-ats">
+                      <li className="shot-ats__ok">Standard section headings</li>
+                      <li className="shot-ats__ok">Single-column, parser-safe layout</li>
+                      <li className="shot-ats__warn">Use one date format (MMM YYYY)</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+              <div className="shot-float shot-float--ats" aria-hidden>
+                <span className="mark__icon">✓</span> ATS readable
+              </div>
+              <div className="shot-float shot-float--gap" aria-hidden>
+                2 missing keywords found
+              </div>
+            </figure>
           </div>
         </section>
 

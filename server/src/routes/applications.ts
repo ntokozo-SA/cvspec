@@ -11,12 +11,38 @@ import { createJobSpecFromText } from '../services/jobSpecCreator.js'
 const APPLICATION_SELECT =
   '*, job_spec:job_specs(id, source_url, parsed_json, created_at), comparison:comparisons(id, match_score, matched_skills, missing_skills, recommendations, resume_id, created_at)'
 
+const JOB_BOARDS = [
+  'linkedin',
+  'indeed',
+  'glassdoor',
+  'ziprecruiter',
+  'google_jobs',
+  'careerbuilder',
+  'monster',
+  'simplyhired',
+  'talention',
+  'flexjobs',
+  'weworkremotely',
+  'remoteco',
+  'dice',
+  'wellfound',
+  'hired',
+  'builtin',
+  'handshake',
+  'snagajob',
+  'upwork',
+  'fiverr',
+  'idealist',
+  'peoplecurated',
+  'other',
+] as const
+
 const createSchema = z.object({
   title: z.string().trim().max(300).optional(),
   company: z.string().trim().max(300).optional(),
   location: z.string().trim().max(300).optional(),
   url: z.string().url(),
-  board: z.enum(['linkedin', 'indeed', 'glassdoor', 'other']),
+  board: z.enum(JOB_BOARDS),
   descriptionText: z.string().trim().min(40, 'Job description text is too short').max(60000),
   analyze: z.boolean().optional().default(true),
 })
@@ -34,10 +60,55 @@ const analyzeSchema = z.object({
   resumeId: z.string().uuid().optional(),
 })
 
+/** Boards that identify the open job by a query parameter; every other parameter is dropped. */
+const QUERY_KEYED_BOARDS: Array<[RegExp, string[]]> = [
+  [/(^|\.)ziprecruiter\.(com|co\.uk)$/, ['jid', 'lk']],
+  [/(^|\.)monster\.(com|co\.uk|ca)$/, ['id']],
+  [/(^|\.)simplyhired\.(com|co\.uk|ca)$/, ['job']],
+  [/(^|\.)wellfound\.com$/, ['job_listing_slug']],
+  [/(^|\.)flexjobs\.com$/, ['id']],
+]
+
+/** Boards whose job URLs carry the id in the path, so the query string is only tracking. */
+const PATH_KEYED_BOARDS =
+  /(^|\.)(careerbuilder\.com|weworkremotely\.com|remote\.co|dice\.com|hired\.com|builtin[a-z]*\.(com|org)|joinhandshake\.(com|co\.uk)|snagajob\.com|idealist\.org|peoplecurated\.com)$/
+
+const GOOGLE_HOST = /^www\.google\.(com|co\.uk|ca|com\.au|co\.za|co\.in|ie)$/
+
 export function normalizeJobUrl(raw: string): string {
   const url = new URL(raw)
+
+  if (GOOGLE_HOST.test(url.hostname)) {
+    let decoded = url.href
+    try {
+      decoded = decodeURIComponent(decoded)
+    } catch {
+      // keep the encoded form
+    }
+    const docId = decoded.match(/(?:htidocid|docid)=([^&#/]+)/)?.[1]
+    if (docId) {
+      return `https://${url.hostname}/search?ibp=htl;jobs&htidocid=${encodeURIComponent(docId)}`
+    }
+  }
+
   url.hash = ''
   const host = url.hostname.replace(/^www\./, '')
+
+  const upworkId = host.endsWith('upwork.com') ? url.pathname.match(/~(0[0-9a-z]{6,})/i)?.[1] : null
+  if (upworkId) return `https://www.upwork.com/jobs/~${upworkId}`
+
+  const queryKeyed = QUERY_KEYED_BOARDS.find(([pattern]) => pattern.test(url.hostname))
+  if (queryKeyed) {
+    const key = queryKeyed[1].find((name) => url.searchParams.get(name))
+    const value = key ? url.searchParams.get(key) : null
+    url.search = key && value ? `?${key}=${encodeURIComponent(value)}` : ''
+    return url.toString()
+  }
+
+  if (PATH_KEYED_BOARDS.test(url.hostname)) {
+    url.search = ''
+    return url.toString()
+  }
 
   if (host.endsWith('linkedin.com')) {
     const viewMatch = url.pathname.match(/\/jobs\/view\/(?:[^/]*-)?(\d+)/)

@@ -4,11 +4,11 @@ import { useAuth } from '../hooks/useAuth'
 
 export function BrandMark({ compact = false }: { compact?: boolean }): ReactElement {
   return (
-    <Link to="/" className="brand" aria-label="CV Specs home">
+    <Link to="/" className="brand" aria-label="CV Spec home">
       <span className="brand__mark" aria-hidden>
         CV
       </span>
-      {!compact && <span className="brand__text">CV Specs</span>}
+      {!compact && <span className="brand__text">CV Spec</span>}
     </Link>
   )
 }
@@ -74,7 +74,7 @@ export function SiteFooter(): ReactElement {
             &copy; {year} {COMPANY_NAME}. All rights reserved.
           </span>
           <span className="site-footer__owner">
-            CV Specs is software under <strong>{COMPANY_NAME}</strong>.
+            CV Spec is software under <strong>{COMPANY_NAME}</strong>.
           </span>
         </div>
       </div>
@@ -88,7 +88,7 @@ export function AppFooter(): ReactElement {
   return (
     <footer className="app-footer">
       <span>
-        &copy; {year} CV Specs is software under <strong>{COMPANY_NAME}</strong>. All rights
+        &copy; {year} CV Spec is software under <strong>{COMPANY_NAME}</strong>. All rights
         reserved.
       </span>
       <span className="app-footer__links">
