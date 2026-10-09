@@ -68,11 +68,15 @@ export async function listResumes(): Promise<Resume[]> {
 
 export async function uploadResume(file: File): Promise<Resume> {
   if (isDemoMode()) {
+    const isPdf = /\.pdf$/i.test(file.name)
+    const fileName = isPdf ? file.name.replace(/\.pdf$/i, '.docx') : file.name
     const resume: Resume = {
       id: crypto.randomUUID(),
       user_id: 'demo',
-      file_name: file.name,
-      storage_path: `demo/${file.name}`,
+      file_name: fileName,
+      storage_path: `demo/${fileName}`,
+      original_file_name: isPdf ? file.name : null,
+      original_storage_path: isPdf ? `demo/${file.name}` : null,
       parsed_json: {
         name: 'Demo Candidate',
         skills: ['TypeScript', 'React', 'Node.js', 'PostgreSQL', 'REST APIs'],

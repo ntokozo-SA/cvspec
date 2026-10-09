@@ -61,7 +61,10 @@ export function ResumesPage(): ReactElement {
       <div className="page-header">
         <div>
           <h1>Resumes</h1>
-          <p>Upload PDF or DOCX files. Parsed skills and experience are stored for comparisons.</p>
+          <p>
+            Upload PDF or DOCX files. PDFs are converted to DOCX automatically. Parsed skills and
+            experience are stored for comparisons.
+          </p>
         </div>
       </div>
 
@@ -103,7 +106,8 @@ export function ResumesPage(): ReactElement {
                   {resume.parsed_json
                     ? `${resume.parsed_json.skills.length} skills parsed`
                     : 'Awaiting parse'}{' '}
-                  · {new Date(resume.created_at).toLocaleString()}
+                  {resume.original_file_name && <>· Converted from {resume.original_file_name} </>}·{' '}
+                  {new Date(resume.created_at).toLocaleString()}
                 </div>
               </div>
               <Button

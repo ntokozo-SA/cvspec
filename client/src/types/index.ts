@@ -5,6 +5,8 @@ export interface Resume {
   user_id: string
   file_name: string
   storage_path: string
+  original_file_name: string | null
+  original_storage_path: string | null
   parsed_json: ResumeParsed | null
   parsed_at: string | null
   created_at: string
