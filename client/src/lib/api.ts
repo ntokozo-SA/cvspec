@@ -17,7 +17,7 @@ async function getAccessToken(): Promise<string | null> {
   return data.session?.access_token ?? null
 }
 
-async function apiFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
+async function apiRequest(path: string, init: RequestInit = {}): Promise<Response> {
   const token = await getAccessToken()
   const headers = new Headers(init.headers)
 
@@ -44,6 +44,12 @@ async function apiFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
     }
     throw new Error(message)
   }
+
+  return response
+}
+
+async function apiFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const response = await apiRequest(path, init)
 
   if (response.status === 204) {
     return undefined as T
@@ -257,6 +263,40 @@ export async function createComparison(resumeId: string, jobSpecId: string): Pro
     method: 'POST',
     body: JSON.stringify({ resumeId, jobSpecId }),
   })
+}
+
+export interface TailoredResume {
+  blob: Blob
+  fileName: string
+  /** Recommendation indexes that could not be placed in the document. */
+  unapplied: number[]
+}
+
+export async function generateTailoredResume(
+  comparisonId: string,
+  recommendations: number[],
+): Promise<TailoredResume> {
+  if (isDemoMode()) {
+    throw new Error('Tailored resumes need a signed-in account with an uploaded DOCX resume.')
+  }
+
+  const response = await apiRequest(`/comparisons/${comparisonId}/tailored-resume`, {
+    method: 'POST',
+    body: JSON.stringify({ recommendations }),
+  })
+  const disposition = response.headers.get('Content-Disposition') ?? ''
+  const encoded = disposition.match(/filename\*=UTF-8''([^;]+)/i)?.[1]
+  const plain = disposition.match(/filename="([^"]+)"/i)?.[1]
+  const unapplied = (response.headers.get('X-Unapplied-Recommendations') ?? '')
+    .split(',')
+    .filter(Boolean)
+    .map(Number)
+
+  return {
+    blob: await response.blob(),
+    fileName: encoded ? decodeURIComponent(encoded) : (plain ?? 'tailored-resume.docx'),
+    unapplied,
+  }
 }
 
 export async function listApplications(): Promise<Application[]> {

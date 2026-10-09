@@ -1,9 +1,21 @@
 import { useEffect, useState, type ReactElement } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { EmptyState } from '../components/Layout'
+import { Button, EmptyState } from '../components/Layout'
 import { MatchGauge, SkillList } from '../components/MatchGauge'
-import { getComparison, listComparisons } from '../lib/api'
+import { useOnline } from '../hooks/useOnline'
+import { generateTailoredResume, getComparison, listComparisons } from '../lib/api'
 import type { Comparison } from '../types'
+
+function saveBlob(blob: Blob, fileName: string): void {
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = fileName
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  setTimeout(() => URL.revokeObjectURL(url), 1000)
+}
 
 export function HistoryPage(): ReactElement {
   const [items, setItems] = useState<Comparison[]>([])
@@ -81,13 +93,21 @@ export function HistoryPage(): ReactElement {
 
 export function ComparisonDetailPage(): ReactElement {
   const { id } = useParams()
+  const online = useOnline()
   const [item, setItem] = useState<Comparison | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [selected, setSelected] = useState<Set<number>>(new Set())
+  const [generating, setGenerating] = useState(false)
+  const [tailorError, setTailorError] = useState<string | null>(null)
+  const [tailorNotice, setTailorNotice] = useState<string | null>(null)
 
   useEffect(() => {
     if (!id) return
     let alive = true
+    setSelected(new Set())
+    setTailorError(null)
+    setTailorNotice(null)
     getComparison(id)
       .then((data) => {
         if (alive) setItem(data)
@@ -116,6 +136,47 @@ export function ComparisonDetailPage(): ReactElement {
         }
       />
     )
+  }
+
+  const recommendations = item.recommendations ?? []
+  const resumeName = item.resume?.file_name ?? ''
+  const canTailor = /\.docx$/i.test(resumeName)
+  const allSelected = recommendations.length > 0 && selected.size === recommendations.length
+
+  const toggle = (index: number): void => {
+    setSelected((current) => {
+      const next = new Set(current)
+      if (next.has(index)) next.delete(index)
+      else next.add(index)
+      return next
+    })
+  }
+
+  const toggleAll = (): void => {
+    setSelected(allSelected ? new Set() : new Set(recommendations.map((_, index) => index)))
+  }
+
+  const downloadTailored = async (): Promise<void> => {
+    const picked = [...selected].sort((a, b) => a - b)
+    setGenerating(true)
+    setTailorError(null)
+    setTailorNotice(null)
+    try {
+      const result = await generateTailoredResume(item.id, picked)
+      saveBlob(result.blob, result.fileName)
+      const applied = picked.length - result.unapplied.length
+      setTailorNotice(
+        result.unapplied.length === 0
+          ? `Downloaded ${result.fileName} with ${applied} ${applied === 1 ? 'edit' : 'edits'} applied.`
+          : `Downloaded ${result.fileName} with ${applied} of ${picked.length} edits applied. These could not be placed automatically, so add them by hand: ${result.unapplied
+              .map((index) => `"${recommendations[index]?.suggestion}"`)
+              .join('; ')}`,
+      )
+    } catch (err) {
+      setTailorError(err instanceof Error ? err.message : 'Could not generate the tailored resume')
+    } finally {
+      setGenerating(false)
+    }
   }
 
   return (
@@ -165,23 +226,81 @@ export function ComparisonDetailPage(): ReactElement {
         <div className="panel-head">
           <div>
             <h2 className="panel-title">Edit recommendations</h2>
-            <p className="panel-sub">Concrete changes for this posting, based on the gap list.</p>
+            <p className="panel-sub">
+              {canTailor
+                ? `Choose the edits you want, then download ${resumeName} with them applied. The tailored copy is generated on demand and never stored.`
+                : 'Concrete changes for this posting, based on the gap list.'}
+            </p>
           </div>
+          {canTailor && recommendations.length > 0 && (
+            <Button variant="ghost" size="sm" onClick={toggleAll} disabled={generating}>
+              {allSelected ? 'Clear' : 'Select all'}
+            </Button>
+          )}
         </div>
+
+        {!canTailor && recommendations.length > 0 && resumeName && (
+          <p className="field-hint" style={{ marginBottom: '0.75rem' }}>
+            Edits can only be applied automatically to DOCX resumes. Upload this resume as a DOCX or
+            a text-based PDF to download a tailored copy.
+          </p>
+        )}
+
         <div className="rec-list">
-          {(item.recommendations ?? []).map((rec, index) => (
-            <article key={`${rec.section}-${index}`} className="rec-item">
-              <div className="rec-item__tag">{rec.section}</div>
-              {rec.original && (
-                <p className="rec-item__original">
-                  <span>Current:</span> {rec.original}
-                </p>
-              )}
-              <h4>{rec.suggestion}</h4>
-              <p>{rec.rationale}</p>
-            </article>
-          ))}
+          {recommendations.map((rec, index) => {
+            const content = (
+              <>
+                <div className="rec-item__tag">{rec.section}</div>
+                {rec.original && (
+                  <p className="rec-item__original">
+                    <span>Current:</span> {rec.original}
+                  </p>
+                )}
+                <h4>{rec.suggestion}</h4>
+                <p>{rec.rationale}</p>
+              </>
+            )
+            if (!canTailor) {
+              return (
+                <article key={`${rec.section}-${index}`} className="rec-item">
+                  {content}
+                </article>
+              )
+            }
+            return (
+              <label
+                key={`${rec.section}-${index}`}
+                className={`rec-item rec-item--selectable${selected.has(index) ? ' is-selected' : ''}`}
+              >
+                <input
+                  type="checkbox"
+                  checked={selected.has(index)}
+                  onChange={() => toggle(index)}
+                  disabled={generating}
+                />
+                <div>{content}</div>
+              </label>
+            )
+          })}
         </div>
+
+        {canTailor && recommendations.length > 0 && (
+          <div className="rec-actions">
+            {tailorError && <div className="form-error">{tailorError}</div>}
+            {tailorNotice && <div className="form-success">{tailorNotice}</div>}
+            <Button
+              onClick={() => void downloadTailored()}
+              disabled={!online || generating || selected.size === 0}
+            >
+              {generating
+                ? 'Generating tailored resume...'
+                : `Download tailored resume${selected.size > 0 ? ` (${selected.size} ${selected.size === 1 ? 'edit' : 'edits'})` : ''}`}
+            </Button>
+            {!online && (
+              <p className="field-hint">Generating a tailored resume is disabled while offline.</p>
+            )}
+          </div>
+        )}
       </div>
     </div>
   )
