@@ -106,6 +106,8 @@ function computeScore(requiredHits: boolean[], preferredHits: boolean[]): number
 export async function scoreResumeAgainstJob(
   resume: ResumeParsed,
   job: JobSpecParsed,
+  /** A prior result for a resume this one only adds to; its matches are kept. */
+  baseline?: ScoreResult,
 ): Promise<ScoreResult> {
   const required = job.requiredSkills ?? []
   const preferred = job.preferredSkills ?? []
@@ -125,9 +127,15 @@ export async function scoreResumeAgainstJob(
 
   const listed = required.length > 0 ? required : preferred
   const listedHits = required.length > 0 ? requiredHits : preferredHits
+  if (baseline) {
+    const kept = new Set(baseline.matchedSkills)
+    listed.forEach((skill, index) => {
+      if (kept.has(skill)) listedHits[index] = true
+    })
+  }
 
   return {
-    matchScore: computeScore(requiredHits, preferredHits),
+    matchScore: Math.max(computeScore(requiredHits, preferredHits), baseline?.matchScore ?? 0),
     matchedSkills: listed.filter((_, index) => listedHits[index]),
     missingSkills: listed.filter((_, index) => !listedHits[index]),
   }

@@ -1,9 +1,15 @@
-import { useEffect, useState, type ReactElement } from 'react'
+import { useEffect, useRef, useState, type ReactElement } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { Button, EmptyState } from '../components/Layout'
 import { MatchGauge, SkillList } from '../components/MatchGauge'
 import { useOnline } from '../hooks/useOnline'
-import { generateTailoredResume, getComparison, listComparisons } from '../lib/api'
+import {
+  generateTailoredResume,
+  getComparison,
+  listComparisons,
+  scoreTailoredResume,
+  type TailoredScore,
+} from '../lib/api'
 import type { Comparison } from '../types'
 
 function saveBlob(blob: Blob, fileName: string): void {
@@ -101,13 +107,23 @@ export function ComparisonDetailPage(): ReactElement {
   const [generating, setGenerating] = useState(false)
   const [tailorError, setTailorError] = useState<string | null>(null)
   const [tailorNotice, setTailorNotice] = useState<string | null>(null)
+  const [tailoredScore, setTailoredScore] = useState<
+    (TailoredScore & { fileName: string; edits: number }) | null
+  >(null)
+  const [scoring, setScoring] = useState(false)
+  const [scoreError, setScoreError] = useState<string | null>(null)
+  const scoreRequest = useRef(0)
 
   useEffect(() => {
     if (!id) return
     let alive = true
+    scoreRequest.current++
     setSelected(new Set())
     setTailorError(null)
     setTailorNotice(null)
+    setTailoredScore(null)
+    setScoring(false)
+    setScoreError(null)
     getComparison(id)
       .then((data) => {
         if (alive) setItem(data)
@@ -156,6 +172,25 @@ export function ComparisonDetailPage(): ReactElement {
     setSelected(allSelected ? new Set() : new Set(recommendations.map((_, index) => index)))
   }
 
+  const rescore = async (applied: number[], fileName: string): Promise<void> => {
+    const request = ++scoreRequest.current
+    setScoring(true)
+    setScoreError(null)
+    setTailoredScore(null)
+    try {
+      const result = await scoreTailoredResume(item.id, applied)
+      if (request === scoreRequest.current) {
+        setTailoredScore({ ...result, fileName, edits: applied.length })
+      }
+    } catch (err) {
+      if (request === scoreRequest.current) {
+        setScoreError(err instanceof Error ? err.message : 'Could not score the tailored resume')
+      }
+    } finally {
+      if (request === scoreRequest.current) setScoring(false)
+    }
+  }
+
   const downloadTailored = async (): Promise<void> => {
     const picked = [...selected].sort((a, b) => a - b)
     setGenerating(true)
@@ -164,20 +199,28 @@ export function ComparisonDetailPage(): ReactElement {
     try {
       const result = await generateTailoredResume(item.id, picked)
       saveBlob(result.blob, result.fileName)
-      const applied = picked.length - result.unapplied.length
+      const applied = picked.filter((index) => !result.unapplied.includes(index))
       setTailorNotice(
         result.unapplied.length === 0
-          ? `Downloaded ${result.fileName} with ${applied} ${applied === 1 ? 'edit' : 'edits'} applied.`
-          : `Downloaded ${result.fileName} with ${applied} of ${picked.length} edits applied. These could not be placed automatically, so add them by hand: ${result.unapplied
+          ? `Downloaded ${result.fileName} with ${applied.length} ${applied.length === 1 ? 'edit' : 'edits'} applied.`
+          : `Downloaded ${result.fileName} with ${applied.length} of ${picked.length} edits applied. These could not be placed automatically, so add them by hand: ${result.unapplied
               .map((index) => `"${recommendations[index]?.suggestion}"`)
               .join('; ')}`,
       )
+      void rescore(applied, result.fileName)
     } catch (err) {
       setTailorError(err instanceof Error ? err.message : 'Could not generate the tailored resume')
     } finally {
       setGenerating(false)
     }
   }
+
+  const previouslyMatched = new Set(item.matched_skills ?? [])
+  const newlyCovered =
+    tailoredScore?.matchedSkills.filter((skill) => !previouslyMatched.has(skill)) ?? []
+  const gain = tailoredScore
+    ? Math.round(tailoredScore.matchScore) - Math.round(tailoredScore.previousScore)
+    : 0
 
   return (
     <div>
@@ -299,6 +342,47 @@ export function ComparisonDetailPage(): ReactElement {
             {!online && (
               <p className="field-hint">Generating a tailored resume is disabled while offline.</p>
             )}
+          </div>
+        )}
+
+        {(scoring || scoreError || tailoredScore) && (
+          <div className="tailored-score" aria-live="polite">
+            {scoring ? (
+              <p className="field-hint">Scoring your tailored resume against this job...</p>
+            ) : scoreError ? (
+              <div className="form-error">{scoreError}</div>
+            ) : tailoredScore ? (
+              <>
+                <div className="tailored-score__head">
+                  <MatchGauge score={tailoredScore.matchScore} size="sm" />
+                  <div>
+                    <div className="tailored-score__label">Tailored resume score</div>
+                    <h3 className="tailored-score__value">
+                      {Math.round(tailoredScore.previousScore)}% →{' '}
+                      {Math.round(tailoredScore.matchScore)}%
+                      <span className={`tailored-score__delta${gain > 0 ? ' is-up' : ''}`}>
+                        {gain > 0 ? `+${gain} points` : 'no change'}
+                      </span>
+                    </h3>
+                    <p className="field-hint">
+                      For {tailoredScore.fileName} with {tailoredScore.edits}{' '}
+                      {tailoredScore.edits === 1 ? 'edit' : 'edits'} applied. This score is not
+                      saved; the comparison above still shows your original resume.
+                    </p>
+                  </div>
+                </div>
+                {newlyCovered.length > 0 && (
+                  <div>
+                    <h4 className="tailored-score__label">Now covered</h4>
+                    <SkillList skills={newlyCovered} variant="matched" />
+                  </div>
+                )}
+                <div>
+                  <h4 className="tailored-score__label">Still missing</h4>
+                  <SkillList skills={tailoredScore.missingSkills} variant="missing" />
+                </div>
+              </>
+            ) : null}
           </div>
         )}
       </div>

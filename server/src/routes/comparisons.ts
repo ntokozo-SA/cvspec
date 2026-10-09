@@ -4,8 +4,13 @@ import { getAuth } from '../middleware/auth.js'
 import { getSupabaseAdmin } from '../middleware/auth.js'
 import { ComparisonInputError, runComparison } from '../services/comparisonRunner.js'
 import { DOCX_MIME_TYPE } from '../services/pdfToDocx.js'
-import { applyRecommendationsToDocx, TailorInputError } from '../services/tailorResume.js'
-import type { Recommendation } from '../types/index.js'
+import { scoreResumeAgainstJob } from '../services/scoring.js'
+import {
+  applyRecommendationsToDocx,
+  applyRecommendationsToParsed,
+  TailorInputError,
+} from '../services/tailorResume.js'
+import type { JobSpecParsed, Recommendation, ResumeParsed, ScoreResult } from '../types/index.js'
 
 const bodySchema = z.object({
   resumeId: z.string().uuid(),
@@ -148,6 +153,62 @@ comparisonsRouter.post('/:id/tailored-resume', async (req, res, next) => {
       res.status(400).json({ error: err.message })
       return
     }
+    next(err)
+  }
+})
+
+/** Scores the comparison's resume with the given recommendations applied. Nothing is stored. */
+comparisonsRouter.post('/:id/tailored-score', async (req, res, next) => {
+  try {
+    const { user } = getAuth(req)
+    const { recommendations: picked } = tailorSchema.parse(req.body)
+    const supabase = getSupabaseAdmin()
+    const { data, error } = await supabase
+      .from('comparisons')
+      .select(
+        'match_score, matched_skills, missing_skills, recommendations, resume:resumes(parsed_json), job_spec:job_specs(parsed_json)',
+      )
+      .eq('id', req.params.id)
+      .eq('user_id', user.id)
+      .maybeSingle()
+
+    if (error) throw error
+    if (!data) {
+      res.status(404).json({ error: 'Comparison not found' })
+      return
+    }
+
+    const parsedOf = <T>(value: unknown): T | null => {
+      const row = (Array.isArray(value) ? value[0] : value) as { parsed_json: T | null } | null
+      return row?.parsed_json ?? null
+    }
+    const resume = parsedOf<ResumeParsed>(data.resume)
+    const job = parsedOf<JobSpecParsed>(data.job_spec)
+    if (!resume || !job) {
+      res.status(404).json({ error: 'The resume or job spec for this comparison no longer exists' })
+      return
+    }
+
+    const all = (data.recommendations ?? []) as Recommendation[]
+    const indexes = [...new Set(picked)]
+    if (indexes.some((index) => index >= all.length)) {
+      res.status(400).json({ error: 'Unknown recommendation selected' })
+      return
+    }
+
+    const baseline: ScoreResult = {
+      matchScore: Number(data.match_score),
+      matchedSkills: (data.matched_skills ?? []) as string[],
+      missingSkills: (data.missing_skills ?? []) as string[],
+    }
+    const tailored = applyRecommendationsToParsed(
+      resume,
+      indexes.map((index) => all[index]),
+    )
+    const score = await scoreResumeAgainstJob(tailored, job, baseline)
+    res.setHeader('Cache-Control', 'no-store')
+    res.json({ ...score, previousScore: baseline.matchScore })
+  } catch (err) {
     next(err)
   }
 })

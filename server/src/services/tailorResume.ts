@@ -1,6 +1,6 @@
 import { DOMParser, XMLSerializer } from '@xmldom/xmldom'
 import JSZip from 'jszip'
-import type { Recommendation } from '../types/index.js'
+import type { Recommendation, ResumeParsed } from '../types/index.js'
 
 const W_NS = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'
 const XML_NS = 'http://www.w3.org/XML/1998/namespace'
@@ -90,6 +90,118 @@ export async function applyRecommendationsToDocx(
   zip.file(DOCUMENT_PART, new XMLSerializer().serializeToString(doc))
   const buffer = await zip.generateAsync({ type: 'nodebuffer', compression: 'DEFLATE' })
   return { buffer, unapplied: unapplied.sort((a, b) => a - b) }
+}
+
+/**
+ * Mirrors the DOCX edits on the parsed resume so the tailored copy can be scored with the
+ * same inputs the original comparison used.
+ */
+export function applyRecommendationsToParsed(
+  resume: ResumeParsed,
+  recommendations: Recommendation[],
+): ResumeParsed {
+  const next: ResumeParsed = {
+    ...resume,
+    skills: [...(resume.skills ?? [])],
+    experience: (resume.experience ?? []).map((job) => ({
+      ...job,
+      bullets: [...(job.bullets ?? [])],
+    })),
+    education: resume.education ? [...resume.education] : undefined,
+  }
+
+  for (const rec of recommendations) {
+    const suggestion = rec.suggestion.replace(BULLET_PATTERN, '').trim()
+    if (suggestion === '') continue
+    if (rec.original && rewriteParsedField(next, rec.original, suggestion)) continue
+    addToParsedSection(next, rec.section, suggestion)
+  }
+  return next
+}
+
+interface ParsedField {
+  value: string
+  set: (value: string) => void
+}
+
+function parsedFields(resume: ResumeParsed): ParsedField[] {
+  const fields: ParsedField[] = []
+  if (resume.summary) {
+    fields.push({ value: resume.summary, set: (value) => (resume.summary = value) })
+  }
+  resume.skills.forEach((value, i) => {
+    fields.push({ value, set: (next) => (resume.skills[i] = next) })
+  })
+  for (const job of resume.experience) {
+    job.bullets.forEach((value, i) => {
+      fields.push({ value, set: (next) => (job.bullets[i] = next) })
+    })
+  }
+  resume.education?.forEach((value, i) => {
+    fields.push({ value, set: (next) => (resume.education![i] = next) })
+  })
+  return fields
+}
+
+function rewriteParsedField(resume: ResumeParsed, original: string, suggestion: string): boolean {
+  const target = normalize(original).chars
+  if (target.length < MIN_ORIGINAL_LENGTH) return false
+  const fields = parsedFields(resume)
+
+  const containing = fields.find((field) => normalize(field.value).chars.includes(target))
+  if (containing) {
+    const whole = normalize(containing.value).chars.length <= target.length * 1.25
+    containing.set(whole ? suggestion : `${containing.value} ${suggestion}`)
+    return true
+  }
+
+  const wanted = tokens(original)
+  let best: ParsedField | null = null
+  let bestScore = FUZZY_MATCH_THRESHOLD
+  for (const field of fields) {
+    const score = similarity(wanted, tokens(field.value))
+    if (score >= bestScore) {
+      bestScore = score
+      best = field
+    }
+  }
+  if (!best) return false
+  best.set(suggestion)
+  return true
+}
+
+function addToParsedSection(resume: ResumeParsed, section: string, suggestion: string): void {
+  switch (categoryOf(section)) {
+    case 'skills':
+      resume.skills.push(suggestion)
+      return
+    case 'summary':
+      resume.summary = resume.summary ? `${resume.summary} ${suggestion}` : suggestion
+      return
+    case 'education':
+      ;(resume.education ??= []).push(suggestion)
+      return
+    case 'experience': {
+      const parts = entryNameParts(section)
+      const job =
+        resume.experience.find((entry) => {
+          const name = normalize(`${entry.title} ${entry.company}`).chars
+          return parts.some((part) => name.includes(part))
+        }) ?? resume.experience[0]
+      if (job) job.bullets.push(suggestion)
+      else resume.experience.push({ title: '', company: '', bullets: [suggestion] })
+      return
+    }
+    default:
+      resume.experience.push({ title: section, company: '', bullets: [suggestion] })
+  }
+}
+
+function entryNameParts(section: string): string[] {
+  return section
+    .split(/\s+(?:at|@)\s+|[-–—,|:()/]/i)
+    .map((part) => normalize(part).chars)
+    .filter((part) => part.length >= 4 && !categoryOf(part))
 }
 
 function readParagraphs(body: Element): ParagraphInfo[] {
@@ -230,10 +342,7 @@ function narrowToEntry(
   from: number,
   to: number,
 ): number | null {
-  const parts = section
-    .split(/\s+(?:at|@)\s+|[-–—,|:()/]/i)
-    .map((part) => normalize(part).chars)
-    .filter((part) => part.length >= 4 && !categoryOf(part))
+  const parts = entryNameParts(section)
   if (parts.length === 0) return null
 
   for (let i = from; i < to; i++) {

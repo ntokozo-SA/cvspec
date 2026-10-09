@@ -299,6 +299,26 @@ export async function generateTailoredResume(
   }
 }
 
+export interface TailoredScore {
+  matchScore: number
+  previousScore: number
+  matchedSkills: string[]
+  missingSkills: string[]
+}
+
+export async function scoreTailoredResume(
+  comparisonId: string,
+  recommendations: number[],
+): Promise<TailoredScore> {
+  if (isDemoMode()) {
+    throw new Error('Tailored resumes need a signed-in account with an uploaded DOCX resume.')
+  }
+  return apiFetch<TailoredScore>(`/comparisons/${comparisonId}/tailored-score`, {
+    method: 'POST',
+    body: JSON.stringify({ recommendations }),
+  })
+}
+
 export async function listApplications(): Promise<Application[]> {
   if (isDemoMode()) return [...demoApplications]
   return apiFetch<Application[]>('/applications')

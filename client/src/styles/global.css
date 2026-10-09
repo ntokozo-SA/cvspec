@@ -2167,6 +2167,50 @@ p {
   margin-top: 1rem;
 }
 
+.tailored-score {
+  display: grid;
+  gap: 0.85rem;
+  margin-top: 1rem;
+  padding: 1rem;
+  border: 1px solid var(--forest);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+}
+
+.tailored-score__head {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.tailored-score__label {
+  margin-bottom: 0.4rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--forest);
+}
+
+.tailored-score__value {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5rem;
+  font-size: 1.35rem;
+  margin-bottom: 0.25rem;
+}
+
+.tailored-score__delta {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.tailored-score__delta.is-up {
+  color: var(--ok);
+}
+
 .grid-2 {
   display: grid;
   grid-template-columns: 1fr;
