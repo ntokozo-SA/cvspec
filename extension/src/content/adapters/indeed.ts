@@ -1,3 +1,4 @@
+import { controlText, findApplyButton, isVisible } from './heuristics'
 import { scanJsonLdJobPosting } from './jsonLd'
 import { descriptionFrom, mergeWithFallback, queryFirst, textFrom, type JobBoardAdapter } from './types'
 
@@ -33,6 +34,22 @@ const ANCHOR = [
   '.jobsearch-IndeedApplyButton-contentWrapper',
 ]
 
+/** "Apply on company site" links out; the Indeed Apply button opens Indeed's own form. */
+const APPLY_BUTTON = [
+  '#applyButtonLinkContainer a',
+  '#applyButtonLinkContainer button',
+  '#indeedApplyButton',
+  '.jobsearch-IndeedApplyButton-contentWrapper button',
+]
+
+function applyButton(): HTMLElement | null {
+  for (const selector of APPLY_BUTTON) {
+    const element = document.querySelector<HTMLElement>(selector)
+    if (element && isVisible(element)) return element
+  }
+  return findApplyButton(queryFirst(ANCHOR) ?? document)
+}
+
 export const indeedAdapter: JobBoardAdapter = {
   board: 'indeed',
   matches(url) {
@@ -62,6 +79,16 @@ export const indeedAdapter: JobBoardAdapter = {
         descriptionText: descriptionFrom(DESCRIPTION),
       },
       scanJsonLdJobPosting(),
+    )
+  },
+  applyButton,
+  isBuiltInApply() {
+    const button = applyButton()
+    if (!button) return false
+    if (/company site/i.test(controlText(button))) return false
+    return (
+      button.id === 'indeedApplyButton' ||
+      button.closest('.jobsearch-IndeedApplyButton-contentWrapper, #indeedApplyButton') !== null
     )
   },
 }

@@ -27,6 +27,19 @@ export interface Recommendation {
   rationale: string
 }
 
+export interface ApplicantProfile {
+  firstName: string | null
+  lastName: string | null
+  email: string | null
+  phone: string | null
+  location: string | null
+  linkedinUrl: string | null
+  websiteUrl: string | null
+  updatedAt: string | null
+  /** False when the values are defaults taken from the latest parsed resume. */
+  saved: boolean
+}
+
 export interface ScoreResult {
   matchScore: number
   matchedSkills: string[]

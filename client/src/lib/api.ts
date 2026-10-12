@@ -1,5 +1,7 @@
 import { supabase } from './supabase'
 import type {
+  ApplicantProfile,
+  ApplicantProfileInput,
   Application,
   ApplicationStatus,
   Comparison,
@@ -341,6 +343,34 @@ export async function updateApplication(
   return apiFetch<Application>(`/applications/${id}`, {
     method: 'PATCH',
     body: JSON.stringify(patch),
+  })
+}
+
+let demoProfile: ApplicantProfile = {
+  firstName: 'Demo',
+  lastName: 'Candidate',
+  email: null,
+  phone: null,
+  location: null,
+  linkedinUrl: null,
+  websiteUrl: null,
+  updatedAt: null,
+  saved: false,
+}
+
+export async function getProfile(): Promise<ApplicantProfile> {
+  if (isDemoMode()) return { ...demoProfile }
+  return apiFetch<ApplicantProfile>('/profile')
+}
+
+export async function updateProfile(input: ApplicantProfileInput): Promise<ApplicantProfile> {
+  if (isDemoMode()) {
+    demoProfile = { ...input, updatedAt: new Date().toISOString(), saved: true }
+    return { ...demoProfile }
+  }
+  return apiFetch<ApplicantProfile>('/profile', {
+    method: 'PUT',
+    body: JSON.stringify(input),
   })
 }
 

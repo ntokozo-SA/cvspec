@@ -1,3 +1,4 @@
+import { looksBuiltInApply } from './heuristics'
 import { scanJsonLdJobPosting } from './jsonLd'
 import {
   cleanBlock,
@@ -228,5 +229,11 @@ export const linkedinAdapter: JobBoardAdapter = {
       })
     }
     return job
+  },
+  applyButton() {
+    return findApplyButton()
+  },
+  isBuiltInApply() {
+    return looksBuiltInApply(findApplyButton())
   },
 }

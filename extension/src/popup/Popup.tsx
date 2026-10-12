@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState, type ReactElement } from 'react'
 import { scanJsonLdJobPosting } from '../content/adapters/jsonLd'
+import applyFormScript from '../content/applyForm/index.tsx?script'
 import { BOARD_IDS, boardForUrl } from '../shared/boards'
 import { WEB_URL } from '../shared/config'
 import { sendMessage, type ExtractJobRequest } from '../shared/messages'
@@ -29,6 +30,20 @@ function openTab(url: string): void {
   window.close()
 }
 
+/**
+ * Runs the application form helper in the active tab. `activeTab` grants access to the page
+ * because the user opened the popup, so no broad host permission is needed.
+ */
+async function injectFormHelper(tabId: number): Promise<void> {
+  await chrome.scripting.executeScript({
+    target: { tabId },
+    func: () => {
+      ;(globalThis as Record<string, unknown>).__cvspecApplyFormInjected = true
+    },
+  })
+  await chrome.scripting.executeScript({ target: { tabId }, files: [applyFormScript] })
+}
+
 type ScanState =
   | { kind: 'idle' }
   | { kind: 'scanning' }
@@ -42,6 +57,8 @@ export function Popup(): ReactElement {
   const [recent, setRecent] = useState<Application[] | null>(null)
   const [scan, setScan] = useState<ScanState>({ kind: 'idle' })
   const [error, setError] = useState<string | null>(null)
+  const [fillError, setFillError] = useState<string | null>(null)
+  const [filling, setFilling] = useState(false)
 
   const load = useCallback(async () => {
     const next = await sendMessage({ type: 'GET_AUTH' }).catch(() => ({ connected: false }))
@@ -94,6 +111,22 @@ export function Popup(): ReactElement {
       setRecent((prev) => [saved, ...(prev ?? []).filter((a) => a.id !== saved.id)].slice(0, 5))
     } catch (err) {
       setScan({ kind: 'error', message: err instanceof Error ? err.message : 'Could not save job' })
+    }
+  }
+
+  const fillThisPage = async () => {
+    setFilling(true)
+    setFillError(null)
+    try {
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
+      if (!tab?.id || !tab.url?.startsWith('http')) {
+        throw new Error('CVSpec cannot run on this page.')
+      }
+      await injectFormHelper(tab.id)
+      window.close()
+    } catch (err) {
+      setFillError(err instanceof Error ? err.message : 'CVSpec cannot run on this page.')
+      setFilling(false)
     }
   }
 
@@ -183,6 +216,23 @@ export function Popup(): ReactElement {
                 </button>
               </>
             )}
+          </section>
+
+          <section className="card">
+            <h2>Application form</h2>
+            <p className="muted">
+              Greenhouse and Lever forms show a Fill button automatically. On other application
+              forms, fill your tailored resume and contact details from here.
+            </p>
+            {fillError && <p className="error">{fillError}</p>}
+            <button
+              type="button"
+              className="btn btn--secondary"
+              disabled={filling}
+              onClick={() => void fillThisPage()}
+            >
+              {filling ? 'Starting...' : 'Fill this application'}
+            </button>
           </section>
 
           <section className="card">

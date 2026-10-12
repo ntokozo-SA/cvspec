@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type ReactElement } from 'react'
+import { BOARDS } from '../../shared/boards'
 import { LAST_RESUME_KEY, WEB_URL } from '../../shared/config'
 import { sendMessage } from '../../shared/messages'
 import type {
@@ -7,7 +8,14 @@ import type {
   Comparison,
   Recommendation,
   ResumeSummary,
+  TailoredFile,
+  TailoredScore,
+  Tailoring,
 } from '../../shared/types'
+import type { JobBoardAdapter } from '../adapters'
+
+const SAVE_DELAY_MS = 600
+const DOCX_TYPE = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
 
 function ScoreRing({ score }: { score: number }): ReactElement {
   const clamped = Math.max(0, Math.min(100, Math.round(score)))
@@ -44,7 +52,15 @@ function SkillChips({
   )
 }
 
-function RecommendationCard({ rec }: { rec: Recommendation }): ReactElement {
+function RecommendationCard({
+  rec,
+  checked,
+  onToggle,
+}: {
+  rec: Recommendation
+  checked: boolean
+  onToggle: () => void
+}): ReactElement {
   const [copied, setCopied] = useState(false)
 
   const copy = async () => {
@@ -58,8 +74,11 @@ function RecommendationCard({ rec }: { rec: Recommendation }): ReactElement {
   }
 
   return (
-    <article className="cvs-rec">
-      <div className="cvs-rec__tag">{rec.section}</div>
+    <article className={`cvs-rec${checked ? ' is-selected' : ''}`}>
+      <label className="cvs-rec__pick">
+        <input type="checkbox" checked={checked} onChange={onToggle} />
+        <span className="cvs-rec__tag">{rec.section}</span>
+      </label>
       {rec.original && (
         <div className="cvs-rec__block cvs-rec__block--before">
           <div className="cvs-rec__label">Current</div>
@@ -86,9 +105,29 @@ async function readLastResumeId(): Promise<string | null> {
   return typeof value === 'string' ? value : null
 }
 
+function downloadFile(file: TailoredFile): void {
+  const bytes = Uint8Array.from(atob(file.base64), (char) => char.charCodeAt(0))
+  const url = URL.createObjectURL(new Blob([bytes], { type: DOCX_TYPE }))
+  const link = document.createElement('a')
+  link.href = url
+  link.download = file.fileName
+  document.body.append(link)
+  link.click()
+  link.remove()
+  setTimeout(() => URL.revokeObjectURL(url), 10_000)
+}
+
+function unappliedNote(count: number): string | null {
+  if (count === 0) return null
+  return count === 1
+    ? '1 selected edit could not be placed in your resume. Copy it in manually.'
+    : `${count} selected edits could not be placed in your resume. Copy them in manually.`
+}
+
 export function TailorPanel({
   open,
   auth,
+  adapter,
   application,
   saveError,
   onApplicationChange,
@@ -96,6 +135,7 @@ export function TailorPanel({
 }: {
   open: boolean
   auth: AuthState | null
+  adapter: JobBoardAdapter
   application: Application | null
   saveError: string | null
   onApplicationChange: (next: Application) => void
@@ -107,8 +147,18 @@ export function TailorPanel({
   const [analyzing, setAnalyzing] = useState(false)
   const [updatingStatus, setUpdatingStatus] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [selected, setSelected] = useState<number[]>([])
+  const [selectionNote, setSelectionNote] = useState<string | null>(null)
+  const [tailoredScore, setTailoredScore] = useState<TailoredScore | null>(null)
+  const [scoring, setScoring] = useState(false)
+  const [busy, setBusy] = useState<'download' | 'apply' | null>(null)
+  const [applyNote, setApplyNote] = useState<string | null>(null)
   const initializedFor = useRef<string | null>(null)
+  const selectionFor = useRef<string | null>(null)
   const applicationRef = useRef(application)
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const pendingSave = useRef<Promise<void> | null>(null)
+  const scoreRequest = useRef(0)
 
   useEffect(() => {
     applicationRef.current = application
@@ -173,6 +223,110 @@ export function TailorPanel({
     })()
   }, [open, auth, application, analyze])
 
+  const scoreSelection = useCallback(async (tailoring: Tailoring | null) => {
+    const request = ++scoreRequest.current
+    if (!tailoring) {
+      setTailoredScore(null)
+      setScoring(false)
+      return
+    }
+    setScoring(true)
+    try {
+      const result = await sendMessage({ type: 'TAILORED_SCORE', tailoring })
+      if (request === scoreRequest.current) setTailoredScore(result)
+    } catch {
+      if (request === scoreRequest.current) setTailoredScore(null)
+    } finally {
+      if (request === scoreRequest.current) setScoring(false)
+    }
+  }, [])
+
+  /** Restores the saved selection when it belongs to the comparison on screen. */
+  useEffect(() => {
+    if (!comparison || selectionFor.current === comparison.id) return
+    selectionFor.current = comparison.id
+    const current = applicationRef.current
+    const saved = current?.tailored_recommendations ?? []
+    const count = comparison.recommendations?.length ?? 0
+
+    if (current?.tailored_comparison_id === comparison.id && saved.length > 0) {
+      const restored = saved.filter((index) => index < count)
+      setSelected(restored)
+      setSelectionNote(null)
+      void scoreSelection(
+        restored.length > 0 ? { comparisonId: comparison.id, recommendations: restored } : null,
+      )
+      return
+    }
+
+    setSelected([])
+    setTailoredScore(null)
+    setSelectionNote(
+      current?.tailored_comparison_id
+        ? 'This job was re-analyzed, so your earlier picks no longer apply. Choose the edits to include again.'
+        : null,
+    )
+  }, [comparison, scoreSelection])
+
+  const persistSelection = useCallback(
+    (next: number[]): Promise<void> => {
+      const current = applicationRef.current
+      if (!current || !comparison) return Promise.resolve()
+      const tailoring =
+        next.length > 0 ? { comparisonId: comparison.id, recommendations: next } : null
+      const run = sendMessage({ type: 'SAVE_TAILORING', applicationId: current.id, tailoring })
+        .then((updated) => {
+          onApplicationChange({
+            ...updated,
+            comparison: updated.comparison ?? applicationRef.current?.comparison ?? comparison,
+          })
+        })
+        .catch((err: unknown) => {
+          setError(err instanceof Error ? err.message : 'Could not save your choices')
+          throw err
+        })
+      pendingSave.current = run.catch(() => undefined)
+      return run
+    },
+    [comparison, onApplicationChange],
+  )
+
+  const toggle = (index: number) => {
+    if (!comparison) return
+    const next = selected.includes(index)
+      ? selected.filter((item) => item !== index)
+      : [...selected, index].sort((a, b) => a - b)
+    setSelected(next)
+    setSelectionNote(null)
+    setApplyNote(null)
+    void scoreSelection(
+      next.length > 0 ? { comparisonId: comparison.id, recommendations: next } : null,
+    )
+    if (saveTimer.current) clearTimeout(saveTimer.current)
+    saveTimer.current = setTimeout(() => {
+      saveTimer.current = null
+      void persistSelection(next).catch(() => undefined)
+    }, SAVE_DELAY_MS)
+  }
+
+  /** Saves any pending selection now, so the form tab reads the latest choice. */
+  const flushSelection = async () => {
+    if (saveTimer.current) {
+      clearTimeout(saveTimer.current)
+      saveTimer.current = null
+      await persistSelection(selected)
+      return
+    }
+    await pendingSave.current
+  }
+
+  useEffect(
+    () => () => {
+      if (saveTimer.current) clearTimeout(saveTimer.current)
+    },
+    [],
+  )
+
   useEffect(() => {
     if (!open) return
     const onKey = (event: KeyboardEvent) => {
@@ -205,9 +359,61 @@ export function TailorPanel({
     }
   }
 
+  const download = async () => {
+    if (!comparison || selected.length === 0) return
+    setBusy('download')
+    setApplyNote(null)
+    try {
+      const file = await sendMessage({
+        type: 'DOWNLOAD_TAILORED',
+        tailoring: { comparisonId: comparison.id, recommendations: selected },
+      })
+      downloadFile(file)
+      setApplyNote(unappliedNote(file.unapplied.length))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not build your tailored resume')
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  const applyWithTailored = async () => {
+    if (!application || !comparison || selected.length === 0) return
+    setBusy('apply')
+    setError(null)
+    setApplyNote(null)
+    try {
+      await flushSelection()
+      if (adapter.isBuiltInApply()) {
+        const label = application.board === 'other' ? 'this site' : BOARDS[application.board].label
+        setApplyNote(
+          `This job uses ${label}'s built-in application form, which CVSpec can't fill. Download your tailored resume and upload it there instead.`,
+        )
+        return
+      }
+      await sendMessage({ type: 'ARM_APPLY', applicationId: application.id })
+      const button = adapter.applyButton()
+      if (button) {
+        button.click()
+        setApplyNote(
+          'Opening the application form. On Greenhouse and Lever forms, click Fill in the CVSpec bar. On other sites, use Fill this application in the CVSpec extension menu.',
+        )
+      } else {
+        setApplyNote(
+          "Couldn't find this page's Apply button. Click Apply now: CVSpec links the form that opens in the next minute to this job.",
+        )
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not start the application')
+    } finally {
+      setBusy(null)
+    }
+  }
+
   if (!open) return null
 
   const selectedResume = resumes?.find((r) => r.id === resumeId)
+  const recommendations = comparison?.recommendations ?? []
 
   return (
     <aside className="cvs-panel" role="dialog" aria-label="Tailor your resume for this job">
@@ -318,9 +524,18 @@ export function TailorPanel({
 
                 <section className="cvs-section">
                   <h3>Recommended edits</h3>
+                  <p className="cvs-muted cvs-section__hint">
+                    Tick the edits to include in the resume you apply with.
+                  </p>
+                  {selectionNote && <div className="cvs-note">{selectionNote}</div>}
                   <div className="cvs-recs">
-                    {(comparison.recommendations ?? []).map((rec, index) => (
-                      <RecommendationCard key={`${rec.section}-${index}`} rec={rec} />
+                    {recommendations.map((rec, index) => (
+                      <RecommendationCard
+                        key={`${rec.section}-${index}`}
+                        rec={rec}
+                        checked={selected.includes(index)}
+                        onToggle={() => toggle(index)}
+                      />
                     ))}
                   </div>
                 </section>
@@ -329,6 +544,46 @@ export function TailorPanel({
           </>
         )}
       </div>
+
+      {application && auth?.connected && comparison && recommendations.length > 0 && (
+        <section className="cvs-panel__apply" aria-label="Apply with a tailored resume">
+          <div className="cvs-apply__summary">
+            <span>
+              {selected.length === 0
+                ? 'No edits selected'
+                : `${selected.length} edit${selected.length === 1 ? '' : 's'} selected`}
+            </span>
+            {selected.length > 0 && (
+              <span className="cvs-apply__score">
+                {scoring
+                  ? 'Rescoring...'
+                  : tailoredScore
+                    ? `Match ${Math.round(tailoredScore.previousScore)}% to ${Math.round(tailoredScore.matchScore)}%`
+                    : null}
+              </span>
+            )}
+          </div>
+          {applyNote && <div className="cvs-note">{applyNote}</div>}
+          <div className="cvs-apply__buttons">
+            <button
+              type="button"
+              className="cvs-btn cvs-btn--secondary"
+              onClick={() => void download()}
+              disabled={selected.length === 0 || busy !== null}
+            >
+              {busy === 'download' ? 'Building...' : 'Download tailored resume'}
+            </button>
+            <button
+              type="button"
+              className="cvs-btn cvs-btn--primary"
+              onClick={() => void applyWithTailored()}
+              disabled={selected.length === 0 || busy !== null}
+            >
+              {busy === 'apply' ? 'Preparing...' : 'Apply with tailored resume'}
+            </button>
+          </div>
+        </section>
+      )}
 
       {application && auth?.connected && (
         <footer className="cvs-panel__foot">

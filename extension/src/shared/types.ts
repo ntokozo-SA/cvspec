@@ -42,6 +42,48 @@ export interface Application {
   resume_id: string | null
   created_at: string
   comparison: Comparison | null
+  tailored_comparison_id: string | null
+  tailored_recommendations: number[] | null
+}
+
+export interface Tailoring {
+  comparisonId: string
+  recommendations: number[]
+}
+
+export interface TailoredScore {
+  matchScore: number
+  previousScore: number
+  matchedSkills: string[]
+  missingSkills: string[]
+}
+
+/** A generated DOCX. Messages are JSON-serialized, so the bytes travel as base64. */
+export interface TailoredFile {
+  base64: string
+  fileName: string
+  /** Recommendation indexes that could not be placed in the document. */
+  unapplied: number[]
+}
+
+export interface ApplicantProfile {
+  firstName: string | null
+  lastName: string | null
+  email: string | null
+  phone: string | null
+  location: string | null
+  linkedinUrl: string | null
+  websiteUrl: string | null
+  updatedAt: string | null
+  saved: boolean
+}
+
+export interface ApplyPackage {
+  application: Application
+  profile: ApplicantProfile
+  file: TailoredFile | null
+  /** Why `file` is missing, shown to the user instead of attaching a resume. */
+  fileError: string | null
 }
 
 export interface ResumeSummary {

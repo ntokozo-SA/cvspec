@@ -34,6 +34,10 @@ const LOCATION_HINTS = [
   '[class*="location" i]',
 ]
 
+/** Apply controls that open the board's own form (or a proposal), not the employer's form. */
+const BUILT_IN_APPLY_TEXT =
+  /\b(?:easy|quick|1-click|one-click) apply\b|\bproposal\b|\bi'?m interested\b/i
+
 export function isVisible(element: Element): boolean {
   return element.getClientRects().length > 0
 }
@@ -42,17 +46,30 @@ function visibleText(element: HTMLElement): string {
   return element.innerText ?? element.textContent ?? ''
 }
 
+/** Visible label of a button or link, falling back to its value and aria-label. */
+export function controlText(element: HTMLElement): string {
+  return cleanInline(
+    visibleText(element) ||
+      (element as HTMLInputElement).value ||
+      element.getAttribute('aria-label') ||
+      '',
+  )
+}
+
+export function looksBuiltInApply(element: HTMLElement | null): boolean {
+  if (!element) return false
+  return (
+    BUILT_IN_APPLY_TEXT.test(controlText(element)) ||
+    BUILT_IN_APPLY_TEXT.test(element.getAttribute('aria-label') ?? '')
+  )
+}
+
 export function findApplyButton(root: ParentNode = document): HTMLElement | null {
   const candidates = root.querySelectorAll<HTMLElement>(
     'button, a, [role="button"], input[type="submit"]',
   )
   for (const element of Array.from(candidates)) {
-    const text = cleanInline(
-      visibleText(element) ||
-        (element as HTMLInputElement).value ||
-        element.getAttribute('aria-label') ||
-        '',
-    )
+    const text = controlText(element)
     if (text.length <= 40 && APPLY_TEXT.test(text) && isVisible(element)) return element
   }
   return null

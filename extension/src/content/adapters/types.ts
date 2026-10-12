@@ -8,6 +8,10 @@ export interface JobBoardAdapter {
   /** Element next to which the CVSpec action bar is inserted (the Apply area). */
   findAnchor(): Element | null
   extract(): ScrapedJob | null
+  /** The board's own Apply control, clicked after "Apply with tailored resume" arms the tab. */
+  applyButton(): HTMLElement | null
+  /** True when Apply opens the board's built-in form (Easy Apply, Indeed Apply, proposals). */
+  isBuiltInApply(): boolean
 }
 
 export function queryFirst(selectors: string[], root: ParentNode = document): HTMLElement | null {

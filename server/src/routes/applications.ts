@@ -47,14 +47,64 @@ const createSchema = z.object({
   analyze: z.boolean().optional().default(true),
 })
 
+const tailoringSchema = z.object({
+  comparisonId: z.string().uuid(),
+  recommendations: z
+    .array(z.number().int().nonnegative())
+    .min(1, 'Choose at least one recommendation')
+    .max(100),
+})
+
 const updateSchema = z
   .object({
     status: z.enum(['saved', 'applied', 'interviewing', 'offer', 'rejected']).optional(),
     resumeId: z.string().uuid().nullable().optional(),
+    tailoring: tailoringSchema.nullable().optional(),
   })
-  .refine((body) => body.status !== undefined || body.resumeId !== undefined, {
-    message: 'Nothing to update',
-  })
+  .refine(
+    (body) =>
+      body.status !== undefined || body.resumeId !== undefined || body.tailoring !== undefined,
+    { message: 'Nothing to update' },
+  )
+
+class TailoringInputError extends Error {}
+
+/** Checks the chosen recommendations against the comparison they index into. */
+async function validateTailoring(
+  userId: string,
+  applicationId: string,
+  tailoring: z.infer<typeof tailoringSchema>,
+): Promise<number[]> {
+  const supabase = getSupabaseAdmin()
+  const [{ data: application, error: applicationError }, { data: comparison, error }] =
+    await Promise.all([
+      supabase
+        .from('applications')
+        .select('job_spec_id')
+        .eq('id', applicationId)
+        .eq('user_id', userId)
+        .maybeSingle(),
+      supabase
+        .from('comparisons')
+        .select('job_spec_id, recommendations')
+        .eq('id', tailoring.comparisonId)
+        .eq('user_id', userId)
+        .maybeSingle(),
+    ])
+  if (applicationError) throw applicationError
+  if (error) throw error
+  if (!application) throw new TailoringInputError('Application not found')
+  if (!comparison || comparison.job_spec_id !== application.job_spec_id) {
+    throw new TailoringInputError('That comparison does not belong to this application')
+  }
+
+  const count = Array.isArray(comparison.recommendations) ? comparison.recommendations.length : 0
+  const indexes = [...new Set(tailoring.recommendations)].sort((a, b) => a - b)
+  if (indexes.some((index) => index >= count)) {
+    throw new TailoringInputError('Unknown recommendation selected')
+  }
+  return indexes
+}
 
 const analyzeSchema = z.object({
   resumeId: z.string().uuid().optional(),
@@ -236,6 +286,17 @@ applicationsRouter.patch('/:id', async (req, res, next) => {
       patch.status_updated_at = new Date().toISOString()
     }
     if (body.resumeId !== undefined) patch.resume_id = body.resumeId
+    if (body.tailoring === null) {
+      patch.tailored_comparison_id = null
+      patch.tailored_recommendations = null
+    } else if (body.tailoring) {
+      patch.tailored_comparison_id = body.tailoring.comparisonId
+      patch.tailored_recommendations = await validateTailoring(
+        user.id,
+        req.params.id,
+        body.tailoring,
+      )
+    }
 
     const { data, error } = await getSupabaseAdmin()
       .from('applications')
@@ -252,6 +313,10 @@ applicationsRouter.patch('/:id', async (req, res, next) => {
     }
     res.json(data)
   } catch (err) {
+    if (err instanceof TailoringInputError) {
+      res.status(err.message === 'Application not found' ? 404 : 400).json({ error: err.message })
+      return
+    }
     next(err)
   }
 })

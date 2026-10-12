@@ -109,4 +109,10 @@ export const googleJobsAdapter: JobBoardAdapter = {
       null,
     )
   },
+  applyButton() {
+    return applyLinks()[0] ?? null
+  },
+  isBuiltInApply() {
+    return false
+  },
 }

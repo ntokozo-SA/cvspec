@@ -11,6 +11,7 @@ import { ComparePage } from './pages/ComparePage'
 import { ApplicationsPage } from './pages/ApplicationsPage'
 import { ComparisonDetailPage, HistoryPage } from './pages/HistoryPage'
 import { PrivacyPage } from './pages/PrivacyPage'
+import { ProfilePage } from './pages/ProfilePage'
 
 export default function App(): ReactElement {
   return (
@@ -30,6 +31,7 @@ export default function App(): ReactElement {
               <Route path="applications" element={<ApplicationsPage />} />
               <Route path="history" element={<HistoryPage />} />
               <Route path="history/:id" element={<ComparisonDetailPage />} />
+              <Route path="profile" element={<ProfilePage />} />
             </Route>
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />

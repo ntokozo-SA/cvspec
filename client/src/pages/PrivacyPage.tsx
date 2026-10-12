@@ -11,7 +11,7 @@ export function PrivacyPage(): ReactElement {
       </header>
       <main className="legal-page">
         <h1>Privacy policy</h1>
-        <p className="legal-page__updated">Last updated: 5 October 2026</p>
+        <p className="legal-page__updated">Last updated: 12 October 2026</p>
 
         <p>
           This policy explains what data CV Spec (the web app and the CVSpec Chrome extension)
@@ -33,8 +33,12 @@ export function PrivacyPage(): ReactElement {
             to save with the extension (title, company, location, description and page URL).
           </li>
           <li>
-            <strong>Results:</strong> match scores, recommendations and the application status you
-            set for saved jobs.
+            <strong>Results:</strong> match scores, recommendations, the application status you
+            set for saved jobs, and which recommendations you chose to apply for each job.
+          </li>
+          <li>
+            <strong>Application profile:</strong> the contact details you save for filling job
+            applications (name, email, phone, location, LinkedIn and website links).
           </li>
         </ul>
 
@@ -47,6 +51,14 @@ export function PrivacyPage(): ReactElement {
           Save to CVSpec or Tailor before applying. On Google it only acts on Google Jobs results.
           It does not record your browsing history, read other pages, or collect data from pages you
           have not acted on.
+        </p>
+        <p>
+          When you choose Apply with tailored resume, the extension also runs on the application
+          form you open from that job: Greenhouse and Lever forms, or any other form page where you
+          click Fill this application in the extension menu. It fills your application profile and
+          attaches your tailored resume, which is generated on demand and not stored. It never
+          submits an application for you, and it only notes that you submitted the form so it can
+          mark the job as applied. It does not read or send the other answers you enter.
         </p>
         <p>
           The extension stores your CV Spec login session and your last selected resume in

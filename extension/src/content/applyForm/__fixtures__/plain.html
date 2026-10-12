@@ -1,0 +1,40 @@
+<header>
+  <form id="site-search" action="/search"><input type="search" name="q" aria-label="Search" /></form>
+</header>
+<main>
+  <h1>Apply: Senior Engineer at Acme</h1>
+  <form id="apply" action="/careers/apply" method="post">
+    <label for="fn">First name *</label>
+    <input id="fn" name="first" required />
+
+    <label for="ln">Surname *</label>
+    <input id="ln" name="last" required />
+
+    <label for="em">Email address *</label>
+    <input id="em" type="email" name="email" required />
+
+    <label for="tel">Mobile number</label>
+    <input id="tel" name="mobile" />
+
+    <label for="li">LinkedIn</label>
+    <input id="li" name="linkedin" />
+
+    <label for="pf">Portfolio or website</label>
+    <input id="pf" name="site" />
+
+    <label for="ref">Referrer email</label>
+    <input id="ref" type="email" name="referrer_email" />
+
+    <input name="website_hp" aria-label="Leave this website field empty" style="display: none" />
+
+    <label for="cv">Upload your CV</label>
+    <input id="cv" type="file" accept=".pdf" />
+
+    <label for="cl">Cover letter</label>
+    <input id="cl" type="file" />
+
+    <label><input type="checkbox" name="consent" required /> I agree to the privacy policy</label>
+
+    <button type="submit">Send application</button>
+  </form>
+</main>

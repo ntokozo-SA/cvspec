@@ -15,6 +15,16 @@ function toMatchPattern(raw: string | undefined): string | null {
 
 const JOB_BOARD_MATCHES = Object.values(BOARDS).flatMap((board) => [...board.matches])
 
+/** Hiring systems whose application forms CVSpec fills. Embedded forms load in an iframe. */
+const APPLY_FORM_MATCHES = [
+  'https://boards.greenhouse.io/*',
+  'https://job-boards.greenhouse.io/*',
+  'https://boards.eu.greenhouse.io/*',
+  'https://job-boards.eu.greenhouse.io/*',
+  'https://jobs.lever.co/*',
+  'https://jobs.eu.lever.co/*',
+]
+
 export default defineManifest(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), 'VITE_')
   const webMatches = [toMatchPattern(env.VITE_WEB_URL)].filter((value): value is string =>
@@ -29,7 +39,7 @@ export default defineManifest(({ mode }) => {
     manifest_version: 3,
     name: 'CVSpec',
     description:
-      'Save jobs from LinkedIn, Indeed, Glassdoor, ZipRecruiter and 18 more job sites to CVSpec and tailor your resume before you apply.',
+      'Save jobs from LinkedIn, Indeed and 20 more sites, tailor your resume, and fill Greenhouse and Lever applications with it.',
     version: pkg.version,
     icons: {
       16: 'icons/icon-16.png',
@@ -59,6 +69,12 @@ export default defineManifest(({ mode }) => {
       {
         matches: JOB_BOARD_MATCHES,
         js: ['src/content/jobBoard.tsx'],
+        run_at: 'document_idle',
+      },
+      {
+        matches: APPLY_FORM_MATCHES,
+        js: ['src/content/applyForm/index.tsx'],
+        all_frames: true,
         run_at: 'document_idle',
       },
     ],

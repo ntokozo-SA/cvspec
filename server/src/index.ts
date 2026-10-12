@@ -7,6 +7,7 @@ import { jobSpecsRouter } from './routes/jobSpecs.js'
 import { comparisonsRouter } from './routes/comparisons.js'
 import { applicationsRouter } from './routes/applications.js'
 import { extensionRouter } from './routes/extension.js'
+import { profileRouter } from './routes/profile.js'
 import { requireAuth } from './middleware/auth.js'
 
 const app = express()
@@ -30,6 +31,7 @@ app.use('/api/job-specs', requireAuth, jobSpecsRouter)
 app.use('/api/comparisons', requireAuth, comparisonsRouter)
 app.use('/api/applications', requireAuth, applicationsRouter)
 app.use('/api/extension', requireAuth, extensionRouter)
+app.use('/api/profile', requireAuth, profileRouter)
 
 app.use(
   (err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {

@@ -7,13 +7,31 @@ import {
 } from '../shared/messages'
 import {
   analyzeApplication,
+  fetchTailoredResume,
   findApplicationByUrl,
+  getApplication,
   listApplications,
   listResumes,
   saveApplication,
+  saveTailoring,
+  tailoredScore,
   updateApplicationStatus,
 } from './api'
+import {
+  applicationForTab,
+  armTab,
+  buildApplyPackage,
+  linkTab,
+  registerApplyTabListeners,
+  unlinkTab,
+} from './applyTabs'
 import { completeHandoff, getAuthState, signOut } from './auth'
+
+function senderTabId(sender: chrome.runtime.MessageSender): number {
+  const tabId = sender.tab?.id
+  if (tabId === undefined) throw new ExtensionError('This action only works from a browser tab', 400)
+  return tabId
+}
 
 function senderOrigin(sender: chrome.runtime.MessageSender): string | null {
   const raw = sender.url ?? sender.tab?.url
@@ -60,8 +78,33 @@ async function handle(
       return analyzeApplication(request.applicationId, request.resumeId)
     case 'UPDATE_STATUS':
       return updateApplicationStatus(request.applicationId, request.status)
+    case 'SAVE_TAILORING':
+      return saveTailoring(request.applicationId, request.tailoring)
+    case 'TAILORED_SCORE':
+      return tailoredScore(request.tailoring)
+    case 'DOWNLOAD_TAILORED':
+      return fetchTailoredResume(request.tailoring)
+    case 'ARM_APPLY':
+      await armTab(senderTabId(sender), request.applicationId)
+      return null
+    case 'GET_APPLY_CONTEXT':
+      return applicationForTab(senderTabId(sender))
+    case 'SET_APPLY_CONTEXT': {
+      const application = await getApplication(request.applicationId)
+      await linkTab(senderTabId(sender), application.id)
+      return application
+    }
+    case 'GET_APPLY_PACKAGE':
+      return buildApplyPackage(request.applicationId)
+    case 'MARK_SUBMITTED': {
+      const updated = await updateApplicationStatus(request.applicationId, 'applied')
+      if (sender.tab?.id !== undefined) await unlinkTab(sender.tab.id)
+      return updated
+    }
   }
 }
+
+registerApplyTabListeners()
 
 chrome.runtime.onMessage.addListener((request: ExtensionRequest, sender, sendResponse) => {
   if (sender.id !== chrome.runtime.id) return false

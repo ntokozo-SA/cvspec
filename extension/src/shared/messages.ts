@@ -1,10 +1,14 @@
 import type {
   Application,
   ApplicationStatus,
+  ApplyPackage,
   AuthState,
   Comparison,
   ResumeSummary,
   ScrapedJob,
+  Tailoring,
+  TailoredFile,
+  TailoredScore,
 } from './types'
 
 export type ExtensionRequest =
@@ -17,6 +21,16 @@ export type ExtensionRequest =
   | { type: 'LIST_RESUMES' }
   | { type: 'ANALYZE'; applicationId: string; resumeId?: string }
   | { type: 'UPDATE_STATUS'; applicationId: string; status: ApplicationStatus }
+  | { type: 'SAVE_TAILORING'; applicationId: string; tailoring: Tailoring | null }
+  | { type: 'TAILORED_SCORE'; tailoring: Tailoring }
+  | { type: 'DOWNLOAD_TAILORED'; tailoring: Tailoring }
+  /** Links the sender's tab, and tabs it opens shortly after, to the application. */
+  | { type: 'ARM_APPLY'; applicationId: string }
+  /** The application linked to the sender's tab, if any. */
+  | { type: 'GET_APPLY_CONTEXT' }
+  | { type: 'SET_APPLY_CONTEXT'; applicationId: string }
+  | { type: 'GET_APPLY_PACKAGE'; applicationId: string }
+  | { type: 'MARK_SUBMITTED'; applicationId: string }
 
 /** Sent from the popup to the job board content script in the active tab. */
 export interface ExtractJobRequest {
@@ -33,6 +47,14 @@ export interface ResponseMap {
   LIST_RESUMES: ResumeSummary[]
   ANALYZE: Comparison
   UPDATE_STATUS: Application
+  SAVE_TAILORING: Application
+  TAILORED_SCORE: TailoredScore
+  DOWNLOAD_TAILORED: TailoredFile
+  ARM_APPLY: null
+  GET_APPLY_CONTEXT: Application | null
+  SET_APPLY_CONTEXT: Application
+  GET_APPLY_PACKAGE: ApplyPackage
+  MARK_SUBMITTED: Application
 }
 
 export type ExtensionResponse<T> =

@@ -125,6 +125,7 @@ export function App({
       <TailorPanel
         open={panelOpen}
         auth={auth}
+        adapter={adapter}
         application={application}
         saveError={saveState === 'error' ? notice : null}
         onApplicationChange={setApplication}

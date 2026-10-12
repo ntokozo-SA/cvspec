@@ -1,3 +1,4 @@
+import { findApplyButton, isVisible, looksBuiltInApply } from './heuristics'
 import { scanJsonLdJobPosting } from './jsonLd'
 import { descriptionFrom, mergeWithFallback, queryFirst, textFrom, type JobBoardAdapter } from './types'
 
@@ -32,6 +33,14 @@ const ANCHOR = [
   '[data-test="easyApply"]',
 ]
 
+function applyButton(): HTMLElement | null {
+  for (const selector of ['[data-test="easyApply"]', '[data-test="applyButton"]']) {
+    const element = document.querySelector<HTMLElement>(selector)
+    if (element && isVisible(element)) return element
+  }
+  return findApplyButton(queryFirst(ANCHOR) ?? document)
+}
+
 export const glassdoorAdapter: JobBoardAdapter = {
   board: 'glassdoor',
   matches(url) {
@@ -65,5 +74,10 @@ export const glassdoorAdapter: JobBoardAdapter = {
       },
       scanJsonLdJobPosting(),
     )
+  },
+  applyButton,
+  isBuiltInApply() {
+    const button = applyButton()
+    return button?.getAttribute('data-test') === 'easyApply' || looksBuiltInApply(button)
   },
 }

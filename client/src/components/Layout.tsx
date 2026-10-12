@@ -41,6 +41,9 @@ export function SiteFooter(): ReactElement {
                   <Link to="/app/applications">Job tracker</Link>
                 </li>
                 <li>
+                  <Link to="/app/profile">Application profile</Link>
+                </li>
+                <li>
                   <Link to="/app/resumes">Resumes</Link>
                 </li>
               </ul>
@@ -153,6 +156,9 @@ export function AppNav(): ReactElement {
               {user.email}
             </span>
           )}
+          <Link className="btn btn-ghost btn-sm" to="/app/profile">
+            Profile
+          </Link>
           <button type="button" className="btn btn-secondary btn-sm" onClick={() => void signOut()}>
             Sign out
           </button>
@@ -171,7 +177,11 @@ const appNavItems = [
   { to: '/app/history', end: false, label: 'History', icon: 'history' },
 ] as const
 
-function NavIcon({ name }: { name: (typeof appNavItems)[number]['icon'] }): ReactElement {
+function NavIcon({
+  name,
+}: {
+  name: (typeof appNavItems)[number]['icon'] | 'profile'
+}): ReactElement {
   const common = {
     width: 22,
     height: 22,
@@ -231,6 +241,13 @@ function NavIcon({ name }: { name: (typeof appNavItems)[number]['icon'] }): Reac
           <path d="M12 8v4l3 2" />
         </svg>
       )
+    case 'profile':
+      return (
+        <svg {...common}>
+          <circle cx="12" cy="8" r="4" />
+          <path d="M4 21c0-4 3.6-7 8-7s8 3 8 7" />
+        </svg>
+      )
   }
 }
 
@@ -255,6 +272,12 @@ export function AppSidebar(): ReactElement {
             </span>
           </NavLink>
         ))}
+        <NavLink to="/app/profile" className={linkClass}>
+          <span className="side-link__icon">
+            <NavIcon name="profile" />
+          </span>
+          <span>Application profile</span>
+        </NavLink>
       </nav>
     </aside>
   )

@@ -108,6 +108,8 @@ export interface Application {
   status: ApplicationStatus
   status_updated_at: string
   created_at: string
+  tailored_comparison_id: string | null
+  tailored_recommendations: number[] | null
   job_spec?: Pick<JobSpec, 'id' | 'source_url' | 'parsed_json' | 'created_at'> | null
   comparison?: Pick<
     Comparison,
@@ -120,6 +122,21 @@ export interface Application {
     | 'created_at'
   > | null
 }
+
+export interface ApplicantProfile {
+  firstName: string | null
+  lastName: string | null
+  email: string | null
+  phone: string | null
+  location: string | null
+  linkedinUrl: string | null
+  websiteUrl: string | null
+  updatedAt: string | null
+  /** False when the values are defaults taken from the latest parsed resume. */
+  saved: boolean
+}
+
+export type ApplicantProfileInput = Omit<ApplicantProfile, 'updatedAt' | 'saved'>
 
 export interface ApiErrorBody {
   error: string

@@ -4,6 +4,7 @@ import {
   descriptionFromPage,
   findApplyButton,
   locationFromPage,
+  looksBuiltInApply,
   MIN_DESCRIPTION_LENGTH,
   pageHasJobPosting,
   titleFromPage,
@@ -78,6 +79,12 @@ export function createGenericAdapter(config: GenericBoardConfig): JobBoardAdapte
         },
         null,
       )
+    },
+    applyButton() {
+      return findApplyButton()
+    },
+    isBuiltInApply() {
+      return looksBuiltInApply(findApplyButton())
     },
   }
 }
