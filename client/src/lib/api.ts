@@ -68,6 +68,13 @@ async function apiFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
   return (await response.json()) as T
 }
 
+function fileNameFrom(response: Response, fallback: string): string {
+  const disposition = response.headers.get('Content-Disposition') ?? ''
+  const encoded = disposition.match(/filename\*=UTF-8''([^;]+)/i)?.[1]
+  const plain = disposition.match(/filename="([^"]+)"/i)?.[1]
+  return encoded ? decodeURIComponent(encoded) : (plain ?? fallback)
+}
+
 const demoResumes: Resume[] = []
 const demoJobSpecs: JobSpec[] = []
 const demoComparisons: Comparison[] = []
@@ -127,6 +134,18 @@ export async function deleteResume(id: string): Promise<void> {
     return
   }
   await apiFetch<void>(`/resumes/${id}`, { method: 'DELETE' })
+}
+
+/** The resume as uploaded: the original PDF for converted resumes, otherwise the stored file. */
+export async function getResumeFile(resume: Resume): Promise<DownloadedFile> {
+  if (isDemoMode()) {
+    throw new Error('Resume previews need a signed-in account.')
+  }
+  const response = await apiRequest(`/resumes/${resume.id}/file`)
+  return {
+    blob: await response.blob(),
+    fileName: fileNameFrom(response, resume.original_file_name ?? resume.file_name),
+  }
 }
 
 export async function listJobSpecs(): Promise<JobSpec[]> {
@@ -294,9 +313,6 @@ export async function generateTailoredResume(
     method: 'POST',
     body: JSON.stringify({ recommendations }),
   })
-  const disposition = response.headers.get('Content-Disposition') ?? ''
-  const encoded = disposition.match(/filename\*=UTF-8''([^;]+)/i)?.[1]
-  const plain = disposition.match(/filename="([^"]+)"/i)?.[1]
   const unapplied = (response.headers.get('X-Unapplied-Recommendations') ?? '')
     .split(',')
     .filter(Boolean)
@@ -304,7 +320,7 @@ export async function generateTailoredResume(
 
   return {
     blob: await response.blob(),
-    fileName: encoded ? decodeURIComponent(encoded) : (plain ?? 'tailored-resume.docx'),
+    fileName: fileNameFrom(response, 'tailored-resume.docx'),
     unapplied,
   }
 }
@@ -529,12 +545,9 @@ export async function downloadCoverLetter(
     `/applications/${applicationId}/cover-letter/file?format=${format}`,
     { method: 'POST' },
   )
-  const disposition = response.headers.get('Content-Disposition') ?? ''
-  const encoded = disposition.match(/filename\*=UTF-8''([^;]+)/i)?.[1]
-  const plain = disposition.match(/filename="([^"]+)"/i)?.[1]
   return {
     blob: await response.blob(),
-    fileName: encoded ? decodeURIComponent(encoded) : (plain ?? `cover-letter.${format}`),
+    fileName: fileNameFrom(response, `cover-letter.${format}`),
   }
 }
 

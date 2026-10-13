@@ -111,6 +111,52 @@ resumesRouter.post('/', upload.single('file'), async (req, res, next) => {
   }
 })
 
+const PREVIEW_MIME_TYPES: Record<string, string> = {
+  pdf: 'application/pdf',
+  docx: DOCX_MIME_TYPE,
+  doc: 'application/msword',
+}
+
+/** Streams the resume as uploaded (the PDF for converted resumes) so it can be shown inline. */
+resumesRouter.get('/:id/file', async (req, res, next) => {
+  try {
+    const { user } = getAuth(req)
+    const supabase = getSupabaseAdmin()
+    const { data: resume, error } = await supabase
+      .from('resumes')
+      .select('file_name, storage_path, original_file_name, original_storage_path')
+      .eq('id', req.params.id)
+      .eq('user_id', user.id)
+      .maybeSingle()
+
+    if (error) throw error
+    if (!resume) {
+      res.status(404).json({ error: 'Resume not found' })
+      return
+    }
+
+    const useOriginal = Boolean(resume.original_storage_path && resume.original_file_name)
+    const fileName: string = useOriginal ? resume.original_file_name : resume.file_name
+    const path: string = useOriginal ? resume.original_storage_path : resume.storage_path
+
+    const { data: file, error: downloadError } = await supabase.storage
+      .from('resumes')
+      .download(path)
+    if (downloadError) throw downloadError
+
+    const extension = fileName.split('.').pop()?.toLowerCase() ?? ''
+    res.setHeader('Content-Type', PREVIEW_MIME_TYPES[extension] ?? 'application/octet-stream')
+    res.setHeader(
+      'Content-Disposition',
+      `inline; filename="${fileName.replace(/[^\x20-\x7e]|"/g, '_')}"; filename*=UTF-8''${encodeURIComponent(fileName)}`,
+    )
+    res.setHeader('Cache-Control', 'private, no-store')
+    res.send(Buffer.from(await file.arrayBuffer()))
+  } catch (err) {
+    next(err)
+  }
+})
+
 resumesRouter.delete('/:id', async (req, res, next) => {
   try {
     const { user } = getAuth(req)

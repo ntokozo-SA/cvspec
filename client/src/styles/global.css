@@ -2334,6 +2334,94 @@ p {
   color: var(--muted);
 }
 
+.list-row__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.preview-dialog {
+  width: min(100vw - 1.5rem, 980px);
+  max-width: none;
+  height: calc(100dvh - 1.5rem);
+  max-height: none;
+  margin: auto;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface-raised);
+  color: var(--ink);
+  box-shadow: var(--shadow);
+}
+
+.preview-dialog[open] {
+  display: flex;
+  flex-direction: column;
+}
+
+.preview-dialog::backdrop {
+  background: rgba(18, 23, 20, 0.55);
+}
+
+.preview-dialog__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.preview-dialog__title {
+  min-width: 0;
+  font-size: 1rem;
+  overflow-wrap: anywhere;
+}
+
+.preview-dialog__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.preview-dialog__note {
+  padding: 0.6rem 1rem;
+  border-bottom: 1px solid var(--line);
+  background: var(--warn-soft);
+  color: var(--warn);
+  font-size: 0.875rem;
+}
+
+.preview-dialog__body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  background: var(--paper-deep);
+}
+
+.preview-dialog__frame {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
+/* Grow with the page so wide documents scroll instead of clipping their left edge. */
+.preview-dialog__docx .docx-wrapper {
+  box-sizing: border-box;
+  width: max-content;
+  min-width: 100%;
+  padding: 1rem;
+  background: transparent;
+}
+
+.preview-dialog__docx .docx-wrapper > section.docx {
+  margin-bottom: 1rem;
+  box-shadow: var(--shadow);
+}
+
 @keyframes rise {
   from {
     opacity: 0;

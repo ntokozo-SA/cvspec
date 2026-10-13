@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState, type ReactElement } from 'react'
 import { Button, EmptyState } from '../components/Layout'
 import { FileDrop } from '../components/FileDrop'
-import { deleteResume, listResumes, uploadResume } from '../lib/api'
+import { ResumePreview, type PreviewFile } from '../components/ResumePreview'
+import { deleteResume, getResumeFile, listResumes, uploadResume } from '../lib/api'
 import { useOnline } from '../hooks/useOnline'
 import type { Resume } from '../types'
 
@@ -11,6 +12,8 @@ export function ResumesPage(): ReactElement {
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [opening, setOpening] = useState<string | null>(null)
+  const [preview, setPreview] = useState<PreviewFile | null>(null)
 
   const refresh = useCallback(async () => {
     const data = await listResumes()
@@ -53,6 +56,18 @@ export function ResumesPage(): ReactElement {
       setError(err instanceof Error ? err.message : 'Delete failed')
     } finally {
       setBusy(false)
+    }
+  }
+
+  const onView = async (resume: Resume): Promise<void> => {
+    setError(null)
+    setOpening(resume.id)
+    try {
+      setPreview(await getResumeFile(resume))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not open the resume')
+    } finally {
+      setOpening(null)
     }
   }
 
@@ -110,18 +125,30 @@ export function ResumesPage(): ReactElement {
                   {new Date(resume.created_at).toLocaleString()}
                 </div>
               </div>
-              <Button
-                variant="danger"
-                size="sm"
-                disabled={busy}
-                onClick={() => void onDelete(resume.id)}
-              >
-                Delete
-              </Button>
+              <div className="list-row__actions">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  disabled={!online || opening !== null}
+                  onClick={() => void onView(resume)}
+                >
+                  {opening === resume.id ? 'Opening...' : 'View'}
+                </Button>
+                <Button
+                  variant="danger"
+                  size="sm"
+                  disabled={busy}
+                  onClick={() => void onDelete(resume.id)}
+                >
+                  Delete
+                </Button>
+              </div>
             </div>
           ))}
         </div>
       )}
+
+      {preview && <ResumePreview file={preview} onClose={() => setPreview(null)} />}
     </div>
   )
 }

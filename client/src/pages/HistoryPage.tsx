@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type ReactElement } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { Button, EmptyState } from '../components/Layout'
 import { MatchGauge, SkillList } from '../components/MatchGauge'
+import { ResumePreview, type PreviewFile } from '../components/ResumePreview'
 import { useOnline } from '../hooks/useOnline'
 import {
   generateTailoredResume,
@@ -94,9 +95,10 @@ export function ComparisonDetailPage(): ReactElement {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [selected, setSelected] = useState<Set<number>>(new Set())
-  const [generating, setGenerating] = useState(false)
+  const [generating, setGenerating] = useState<'download' | 'preview' | null>(null)
   const [tailorError, setTailorError] = useState<string | null>(null)
   const [tailorNotice, setTailorNotice] = useState<string | null>(null)
+  const [preview, setPreview] = useState<(PreviewFile & { note: string | null }) | null>(null)
   const [tailoredScore, setTailoredScore] = useState<
     (TailoredScore & { fileName: string; edits: number }) | null
   >(null)
@@ -114,6 +116,7 @@ export function ComparisonDetailPage(): ReactElement {
     setTailoredScore(null)
     setScoring(false)
     setScoreError(null)
+    setPreview(null)
     getComparison(id)
       .then((data) => {
         if (alive) setItem(data)
@@ -148,6 +151,8 @@ export function ComparisonDetailPage(): ReactElement {
   const resumeName = item.resume?.file_name ?? ''
   const canTailor = /\.docx$/i.test(resumeName)
   const allSelected = recommendations.length > 0 && selected.size === recommendations.length
+  const editCount =
+    selected.size > 0 ? ` (${selected.size} ${selected.size === 1 ? 'edit' : 'edits'})` : ''
 
   const toggle = (index: number): void => {
     setSelected((current) => {
@@ -181,27 +186,36 @@ export function ComparisonDetailPage(): ReactElement {
     }
   }
 
-  const downloadTailored = async (): Promise<void> => {
+  const buildTailored = async (mode: 'download' | 'preview'): Promise<void> => {
     const picked = [...selected].sort((a, b) => a - b)
-    setGenerating(true)
+    setGenerating(mode)
     setTailorError(null)
     setTailorNotice(null)
     try {
       const result = await generateTailoredResume(item.id, picked)
-      saveBlob(result.blob, result.fileName)
       const applied = picked.filter((index) => !result.unapplied.includes(index))
-      setTailorNotice(
+      const unappliedNote =
         result.unapplied.length === 0
-          ? `Downloaded ${result.fileName} with ${applied.length} ${applied.length === 1 ? 'edit' : 'edits'} applied.`
-          : `Downloaded ${result.fileName} with ${applied.length} of ${picked.length} edits applied. These could not be placed automatically, so add them by hand: ${result.unapplied
+          ? null
+          : `${applied.length} of ${picked.length} edits applied. These could not be placed automatically, so add them by hand: ${result.unapplied
               .map((index) => `"${recommendations[index]?.suggestion}"`)
-              .join('; ')}`,
-      )
+              .join('; ')}`
+      if (mode === 'download') {
+        saveBlob(result.blob, result.fileName)
+        setTailorNotice(
+          unappliedNote
+            ? `Downloaded ${result.fileName} with ${unappliedNote}`
+            : `Downloaded ${result.fileName} with ${applied.length} ${applied.length === 1 ? 'edit' : 'edits'} applied.`,
+        )
+      } else {
+        setPreview({ blob: result.blob, fileName: result.fileName, note: unappliedNote })
+        if (unappliedNote) setTailorNotice(`Previewed ${result.fileName} with ${unappliedNote}`)
+      }
       void rescore(applied, result.fileName)
     } catch (err) {
       setTailorError(err instanceof Error ? err.message : 'Could not generate the tailored resume')
     } finally {
-      setGenerating(false)
+      setGenerating(null)
     }
   }
 
@@ -261,12 +275,12 @@ export function ComparisonDetailPage(): ReactElement {
             <h2 className="panel-title">Edit recommendations</h2>
             <p className="panel-sub">
               {canTailor
-                ? `Choose the edits you want, then download ${resumeName} with them applied. The tailored copy is generated on demand and never stored.`
+                ? `Choose the edits you want, then preview or download ${resumeName} with them applied. The tailored copy is generated on demand and never stored.`
                 : 'Concrete changes for this posting, based on the gap list.'}
             </p>
           </div>
           {canTailor && recommendations.length > 0 && (
-            <Button variant="ghost" size="sm" onClick={toggleAll} disabled={generating}>
+            <Button variant="ghost" size="sm" onClick={toggleAll} disabled={generating !== null}>
               {allSelected ? 'Clear' : 'Select all'}
             </Button>
           )}
@@ -309,7 +323,7 @@ export function ComparisonDetailPage(): ReactElement {
                   type="checkbox"
                   checked={selected.has(index)}
                   onChange={() => toggle(index)}
-                  disabled={generating}
+                  disabled={generating !== null}
                 />
                 <div>{content}</div>
               </label>
@@ -321,14 +335,23 @@ export function ComparisonDetailPage(): ReactElement {
           <div className="rec-actions">
             {tailorError && <div className="form-error">{tailorError}</div>}
             {tailorNotice && <div className="form-success">{tailorNotice}</div>}
-            <Button
-              onClick={() => void downloadTailored()}
-              disabled={!online || generating || selected.size === 0}
-            >
-              {generating
-                ? 'Generating tailored resume...'
-                : `Download tailored resume${selected.size > 0 ? ` (${selected.size} ${selected.size === 1 ? 'edit' : 'edits'})` : ''}`}
-            </Button>
+            <div className="list-row__actions">
+              <Button
+                onClick={() => void buildTailored('preview')}
+                disabled={!online || generating !== null || selected.size === 0}
+              >
+                {generating === 'preview'
+                  ? 'Generating preview...'
+                  : `Preview tailored resume${editCount}`}
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={() => void buildTailored('download')}
+                disabled={!online || generating !== null || selected.size === 0}
+              >
+                {generating === 'download' ? 'Generating tailored resume...' : 'Download'}
+              </Button>
+            </div>
             {!online && (
               <p className="field-hint">Generating a tailored resume is disabled while offline.</p>
             )}
@@ -376,6 +399,10 @@ export function ComparisonDetailPage(): ReactElement {
           </div>
         )}
       </div>
+
+      {preview && (
+        <ResumePreview file={preview} note={preview.note} onClose={() => setPreview(null)} />
+      )}
     </div>
   )
 }
