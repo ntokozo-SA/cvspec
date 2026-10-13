@@ -1,5 +1,12 @@
-import { findRequiredUnfilled } from '../fill'
-import { findResumeInput, matchFields, pageShowsConfirmation } from './generic'
+import { findRequiredUnfilled, isVisible } from '../fill'
+import { collectQuestions } from '../questions'
+import {
+  findCoverLetterInput,
+  findCoverLetterTextarea,
+  findResumeInput,
+  matchFields,
+  pageShowsConfirmation,
+} from './generic'
 import type { ApplyFormAdapter, ProfileField, TextField } from './types'
 
 const HOST = /^(?:boards|job-boards)(?:\.eu)?\.greenhouse\.io$/
@@ -39,6 +46,35 @@ function byId(root: ParentNode, id: string): TextField | null {
     : null
 }
 
+function fields(): Partial<Record<ProfileField, TextField>> {
+  const root = form() ?? document
+  const result = matchFields(root)
+  for (const [key, id] of Object.entries(FIELD_IDS) as Array<[ProfileField, string]>) {
+    const field = byId(root, id)
+    if (field) result[key] = field
+  }
+  if (result.firstName && result.lastName) delete result.fullName
+  return result
+}
+
+function resumeInput(): HTMLInputElement | null {
+  const root = form() ?? document
+  for (const selector of RESUME) {
+    const input = root.querySelector<HTMLInputElement>(selector)
+    if (input) return input
+  }
+  return findResumeInput(root)
+}
+
+/** Greenhouse's "enter manually" cover letter box, when the board offers one. */
+function coverLetterTextarea(): HTMLTextAreaElement | null {
+  const root = form() ?? document
+  const box = root.querySelector<HTMLTextAreaElement>(
+    'textarea#cover_letter_text, textarea[name*="cover_letter_text" i]',
+  )
+  return box && !box.disabled && isVisible(box) ? box : findCoverLetterTextarea(root)
+}
+
 export const greenhouseAdapter: ApplyFormAdapter = {
   system: 'greenhouse',
   matches(url) {
@@ -49,23 +85,22 @@ export const greenhouseAdapter: ApplyFormAdapter = {
     const root = form()
     return root !== null && (byId(root, 'first_name') !== null || byId(root, 'email') !== null)
   },
-  resumeInput() {
+  resumeInput,
+  coverLetterInput() {
     const root = form() ?? document
-    for (const selector of RESUME) {
-      const input = root.querySelector<HTMLInputElement>(selector)
-      if (input) return input
-    }
-    return findResumeInput(root)
+    const resume = resumeInput()
+    const input =
+      root.querySelector<HTMLInputElement>('input[type="file"]#cover_letter') ??
+      root.querySelector<HTMLInputElement>('input[type="file"][name*="cover_letter" i]')
+    return input && input !== resume ? input : findCoverLetterInput(root, resume)
   },
-  fields() {
-    const root = form() ?? document
-    const fields = matchFields(root)
-    for (const [key, id] of Object.entries(FIELD_IDS) as Array<[ProfileField, string]>) {
-      const field = byId(root, id)
-      if (field) fields[key] = field
-    }
-    if (fields.firstName && fields.lastName) delete fields.fullName
-    return fields
+  coverLetterTextarea,
+  fields,
+  questions() {
+    return collectQuestions(form() ?? document, 'greenhouse', [
+      ...Object.values(fields()),
+      coverLetterTextarea() ?? undefined,
+    ])
   },
   requiredUnfilled() {
     return findRequiredUnfilled(form() ?? document)

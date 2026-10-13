@@ -1,0 +1,66 @@
+<div data-automation-id="applyFlowPage">
+  <ol data-automation-id="progressBar">
+    <li data-automation-id="progressBarCompletedStep"><label>My Information</label></li>
+    <li data-automation-id="progressBarCompletedStep"><label>My Experience</label></li>
+    <li data-automation-id="progressBarCompletedStep"><label>Application Questions</label></li>
+    <li data-automation-id="progressBarActiveStep">
+      <div>current step 4 of 6</div>
+      <label>Voluntary Disclosures</label>
+    </li>
+    <li data-automation-id="progressBarInactiveStep"><label>Self Identify</label></li>
+    <li data-automation-id="progressBarInactiveStep"><label>Review</label></li>
+  </ol>
+  <div data-automation-id="voluntaryDisclosuresPage">
+    <h2>Voluntary Disclosures</h2>
+    <div data-automation-id="formField-nationality">
+      <label for="vd-nationality">Nationality</label>
+      <button
+        type="button"
+        id="vd-nationality"
+        aria-haspopup="listbox"
+        aria-controls="popup-nationality"
+      >
+        Select One
+      </button>
+    </div>
+    <div data-automation-id="formField-gender">
+      <label for="vd-gender">Gender</label>
+      <button type="button" id="vd-gender" aria-haspopup="listbox" aria-controls="popup-gender">
+        Select One
+      </button>
+    </div>
+    <div data-automation-id="formField-other">
+      <label for="vd-other">If other, please specify</label>
+      <input id="vd-other" type="text" />
+    </div>
+    <div data-automation-id="formField-veteran">
+      <fieldset>
+        <legend>Do you have a disability?</legend>
+        <label><input type="radio" name="disability" value="yes" /> Yes</label>
+        <label><input type="radio" name="disability" value="no" /> No</label>
+        <label><input type="radio" name="disability" value="decline" /> I do not wish to answer</label>
+      </fieldset>
+    </div>
+    <div data-automation-id="formField-email">
+      <label for="vd-email">Email Address</label>
+      <input id="vd-email" type="text" />
+    </div>
+    <div data-automation-id="formField-agreement">
+      <label>
+        <input type="checkbox" id="vd-consent" /> I consent to the processing of this information
+      </label>
+    </div>
+  </div>
+  <div role="listbox" id="popup-nationality" hidden>
+    <div role="option">South African</div>
+    <div role="option">Other</div>
+  </div>
+  <div role="listbox" id="popup-gender" hidden>
+    <div role="option">Male</div>
+    <div role="option">Female</div>
+  </div>
+  <div data-automation-id="bottom-navigation">
+    <button type="button" data-automation-id="bottom-navigation-back-button">Back</button>
+    <button type="button" data-automation-id="bottom-navigation-next-button">Save and Continue</button>
+  </div>
+</div>

@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useState, type ReactElement } from 'react'
 import { scanJsonLdJobPosting } from '../content/adapters/jsonLd'
 import applyFormScript from '../content/applyForm/index.tsx?script'
-import { BOARD_IDS, boardForUrl } from '../shared/boards'
+import { boardForUrl, STATIC_BOARD_IDS } from '../shared/boards'
 import { WEB_URL } from '../shared/config'
 import { sendMessage, type ExtractJobRequest } from '../shared/messages'
+import { requestSite, siteAccess } from '../shared/siteAccess'
+import { siteForUrl, SITES, type SiteId } from '../shared/sites'
 import type { Application, AuthState, ScrapedJob } from '../shared/types'
 
 const STATUS_LABELS: Record<Application['status'], string> = {
@@ -52,7 +54,50 @@ type ScanState =
   | { kind: 'saved'; job: ScrapedJob }
   | { kind: 'error'; message: string }
 
+type SiteState =
+  | { kind: 'none' }
+  | { kind: 'off'; id: SiteId }
+  | { kind: 'requesting'; id: SiteId }
+  | { kind: 'on'; id: SiteId; justEnabled: boolean }
+
+/** Offers access to the current page's site when it is an optional site that is still off. */
+function SiteCard({
+  site,
+  onEnable,
+}: {
+  site: SiteState
+  onEnable: (id: SiteId) => void
+}): ReactElement | null {
+  if (site.kind === 'none') return null
+  if (site.kind === 'on' && !site.justEnabled) return null
+  const label = SITES[site.id].label
+  return (
+    <section className="card">
+      <h2>{label}</h2>
+      {site.kind === 'on' ? (
+        <p className="ok">CVSpec is on for {label}. It loads on this page now.</p>
+      ) : (
+        <>
+          <p className="muted">
+            CVSpec only runs on {label} once you allow it. Chrome asks you to confirm.
+          </p>
+          <button
+            type="button"
+            className="btn btn--primary"
+            disabled={site.kind === 'requesting'}
+            onClick={() => onEnable(site.id)}
+          >
+            {site.kind === 'requesting' ? 'Waiting for Chrome...' : `Enable CVSpec on ${label}`}
+          </button>
+        </>
+      )}
+    </section>
+  )
+}
+
 export function Popup(): ReactElement {
+  const [site, setSite] = useState<SiteState>({ kind: 'none' })
+  const [siteError, setSiteError] = useState<string | null>(null)
   const [auth, setAuth] = useState<AuthState | null>(null)
   const [recent, setRecent] = useState<Application[] | null>(null)
   const [scan, setScan] = useState<ScanState>({ kind: 'idle' })
@@ -75,6 +120,34 @@ export function Popup(): ReactElement {
   useEffect(() => {
     void load()
   }, [load])
+
+  useEffect(() => {
+    void (async () => {
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
+      const id = siteForUrl(tab?.url)
+      if (!id) return
+      const granted = (await siteAccess())[id]
+      setSite(granted ? { kind: 'on', id, justEnabled: false } : { kind: 'off', id })
+    })().catch(() => undefined)
+  }, [])
+
+  const enableSite = (id: SiteId) => {
+    setSite({ kind: 'requesting', id })
+    setSiteError(null)
+    requestSite(id)
+      .then((granted) => {
+        if (granted) {
+          setSite({ kind: 'on', id, justEnabled: true })
+        } else {
+          setSite({ kind: 'off', id })
+          setSiteError(`Access to ${SITES[id].label} was not granted.`)
+        }
+      })
+      .catch((err: unknown) => {
+        setSite({ kind: 'off', id })
+        setSiteError(err instanceof Error ? err.message : 'Could not enable this site')
+      })
+  }
 
   const scanPage = async () => {
     setScan({ kind: 'scanning' })
@@ -143,7 +216,17 @@ export function Popup(): ReactElement {
           CV
         </span>
         <span className="brand-text">CVSpec</span>
+        <button
+          type="button"
+          className="link popup__settings"
+          onClick={() => void chrome.runtime.openOptionsPage()}
+        >
+          Sites
+        </button>
       </header>
+
+      <SiteCard site={site} onEnable={enableSite} />
+      {siteError && <p className="error">{siteError}</p>}
 
       {auth === null ? (
         <p className="muted">Checking connection...</p>
@@ -176,7 +259,7 @@ export function Popup(): ReactElement {
             {scan.kind === 'idle' && (
               <>
                 <p className="muted">
-                  On LinkedIn, Indeed, Glassdoor and {BOARD_IDS.length - 3} more job boards the Save
+                  On LinkedIn, Indeed, Glassdoor and {STATIC_BOARD_IDS.length - 3} more job boards the Save
                   and Tailor buttons appear next to Apply. On other job sites, scan the page for a
                   posting.
                 </p>

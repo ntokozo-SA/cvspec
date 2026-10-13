@@ -166,15 +166,26 @@ function scheduleSync(): void {
   }, 300)
 }
 
-new MutationObserver(scheduleSync).observe(document.documentElement, {
-  childList: true,
-  subtree: true,
-})
-window.addEventListener('popstate', scheduleSync)
-chrome.runtime.onMessage.addListener((message: ExtractJobRequest, sender, sendResponse) => {
-  if (sender.id !== chrome.runtime.id || message?.type !== 'EXTRACT_JOB') return false
-  sendResponse(findAdapter(new URL(window.location.href))?.extract() ?? null)
-  return false
-})
-console.info('[CVSpec] Job board helper loaded.')
-sync()
+/** Set once per page; the script can also be injected when the user enables an optional site. */
+const LOADED_FLAG = '__cvspecJobBoardLoaded'
+
+function start(): void {
+  const flags = globalThis as typeof globalThis & { [LOADED_FLAG]?: boolean }
+  if (flags[LOADED_FLAG]) return
+  flags[LOADED_FLAG] = true
+
+  new MutationObserver(scheduleSync).observe(document.documentElement, {
+    childList: true,
+    subtree: true,
+  })
+  window.addEventListener('popstate', scheduleSync)
+  chrome.runtime.onMessage.addListener((message: ExtractJobRequest, sender, sendResponse) => {
+    if (sender.id !== chrome.runtime.id || message?.type !== 'EXTRACT_JOB') return false
+    sendResponse(findAdapter(new URL(window.location.href))?.extract() ?? null)
+    return false
+  })
+  console.info('[CVSpec] Job board helper loaded.')
+  sync()
+}
+
+start()

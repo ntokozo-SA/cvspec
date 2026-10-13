@@ -5,17 +5,27 @@ import {
   type ExtensionResponse,
   type ResponseMap,
 } from '../shared/messages'
+import { isSensitiveQuestion } from '../shared/sensitive'
 import {
   analyzeApplication,
+  draftAnswers,
+  draftCoverLetter,
+  fetchCoverLetterFile,
   fetchTailoredResume,
   findApplicationByUrl,
+  getAnswers,
   getApplication,
   listApplications,
+  listBank,
   listResumes,
+  saveAnswers,
   saveApplication,
+  saveBankAnswer,
+  saveCoverLetter,
   saveTailoring,
   tailoredScore,
   updateApplicationStatus,
+  updateApplyInfo,
 } from './api'
 import {
   applicationForTab,
@@ -26,6 +36,20 @@ import {
   unlinkTab,
 } from './applyTabs'
 import { completeHandoff, getAuthState, signOut } from './auth'
+import {
+  getQueueStatus,
+  openQueuePage,
+  previewQueue,
+  queueBuiltIn,
+  queueNext,
+  queueSkip,
+  queueStop,
+  queueSubmitted,
+  registerQueueListeners,
+  resumeQueue,
+  startQueue,
+} from './queueRunner'
+import { registerSiteListeners } from './sites'
 
 function senderTabId(sender: chrome.runtime.MessageSender): number {
   const tabId = sender.tab?.id
@@ -99,12 +123,67 @@ async function handle(
     case 'MARK_SUBMITTED': {
       const updated = await updateApplicationStatus(request.applicationId, 'applied')
       if (sender.tab?.id !== undefined) await unlinkTab(sender.tab.id)
+      await queueSubmitted(request.applicationId)
       return updated
     }
+    case 'SET_APPLY_URL': {
+      if (!/^https?:\/\//i.test(request.url)) return null
+      await updateApplyInfo(request.applicationId, { applyUrl: request.url.slice(0, 2000) })
+      return null
+    }
+    case 'QUEUE_OPEN':
+      if (!isCvspecWebApp(sender)) throw new ExtensionError('Only CVSpec can open the queue', 403)
+      await openQueuePage()
+      return null
+    case 'QUEUE_PREVIEW':
+      if (!isExtensionPage(sender)) throw new ExtensionError('Queue preview rejected', 403)
+      return previewQueue()
+    case 'QUEUE_START':
+      if (!isExtensionPage(sender)) throw new ExtensionError('Start the queue from its page', 403)
+      return startQueue()
+    case 'QUEUE_RESUME':
+      return resumeQueue()
+    case 'QUEUE_STATUS':
+      return getQueueStatus(sender.tab?.id)
+    case 'QUEUE_NEXT':
+      return queueNext()
+    case 'QUEUE_SKIP':
+      return queueSkip()
+    case 'QUEUE_STOP':
+      return queueStop()
+    case 'QUEUE_BUILT_IN':
+      return queueBuiltIn(request.applicationId, sender.tab?.id)
+    case 'GET_ANSWERS':
+      return getAnswers(request.applicationId)
+    case 'DRAFT_ANSWERS':
+      return draftAnswers(
+        request.applicationId,
+        request.questions.filter((question) => !isSensitiveQuestion(question.label)),
+      )
+    case 'SAVE_ANSWERS':
+      return saveAnswers(
+        request.applicationId,
+        request.answers.filter((answer) => !isSensitiveQuestion(answer.questionLabel)),
+      )
+    case 'LIST_BANK':
+      return listBank()
+    case 'SAVE_BANK_ANSWER':
+      return saveBankAnswer(request.answer)
+    case 'DRAFT_COVER_LETTER':
+      return draftCoverLetter(request.applicationId, {
+        tone: request.tone,
+        length: request.length,
+      })
+    case 'SAVE_COVER_LETTER':
+      return saveCoverLetter(request.applicationId, request.coverLetter)
+    case 'GET_COVER_LETTER_FILE':
+      return fetchCoverLetterFile(request.applicationId, request.format)
   }
 }
 
 registerApplyTabListeners()
+registerSiteListeners()
+registerQueueListeners()
 
 chrome.runtime.onMessage.addListener((request: ExtensionRequest, sender, sendResponse) => {
   if (sender.id !== chrome.runtime.id) return false

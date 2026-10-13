@@ -4,6 +4,11 @@ export interface BoardInfo {
   host: RegExp
   /** Chrome match patterns the job board content script is injected into. */
   matches: readonly string[]
+  /**
+   * Behind an optional host permission: left out of the manifest's static content scripts and
+   * registered at runtime once the user grants access (see `sites.ts`).
+   */
+  optional?: true
 }
 
 const GOOGLE_TLDS = ['com', 'co.uk', 'ca', 'com.au', 'co.za', 'co.in', 'ie'] as const
@@ -133,12 +138,43 @@ export const BOARDS = {
     host: /(^|\.)peoplecurated\.com$/,
     matches: ['https://*.peoplecurated.com/*'],
   },
+  pnet: {
+    label: 'PNet',
+    host: /(^|\.)pnet\.co\.za$/,
+    matches: ['https://*.pnet.co.za/*'],
+    optional: true,
+  },
+  careers24: {
+    label: 'Careers24',
+    host: /(^|\.)careers24\.com$/,
+    matches: ['https://*.careers24.com/*'],
+    optional: true,
+  },
+  careerjunction: {
+    label: 'CareerJunction',
+    host: /(^|\.)careerjunction\.co\.za$/,
+    matches: ['https://*.careerjunction.co.za/*'],
+    optional: true,
+  },
+  offerzen: {
+    label: 'OfferZen',
+    host: /(^|\.)offerzen\.com$/,
+    matches: ['https://*.offerzen.com/*'],
+    optional: true,
+  },
 } as const satisfies Record<string, BoardInfo>
 
 export type KnownBoard = keyof typeof BOARDS
 export type Board = KnownBoard | 'other'
 
 export const BOARD_IDS = Object.keys(BOARDS) as KnownBoard[]
+
+export function isOptionalBoard(id: KnownBoard): boolean {
+  return (BOARDS[id] as BoardInfo).optional === true
+}
+
+/** Boards whose content script is declared in the manifest. */
+export const STATIC_BOARD_IDS = BOARD_IDS.filter((id) => !isOptionalBoard(id))
 
 export function boardForUrl(raw: string): Board {
   let hostname: string

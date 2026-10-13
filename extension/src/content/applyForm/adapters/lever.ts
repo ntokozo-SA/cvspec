@@ -1,5 +1,12 @@
-import { findRequiredUnfilled } from '../fill'
-import { findResumeInput, matchFields, pageShowsConfirmation } from './generic'
+import { findRequiredUnfilled, isVisible } from '../fill'
+import { collectQuestions } from '../questions'
+import {
+  findCoverLetterInput,
+  findCoverLetterTextarea,
+  findResumeInput,
+  matchFields,
+  pageShowsConfirmation,
+} from './generic'
 import type { ApplyFormAdapter, ProfileField, TextField } from './types'
 
 const HOST = /^jobs(?:\.eu)?\.lever\.co$/
@@ -30,6 +37,36 @@ function byName(root: ParentNode, name: string): TextField | null {
     : null
 }
 
+function fields(): Partial<Record<ProfileField, TextField>> {
+  const root = form() ?? document
+  const result = matchFields(root)
+  for (const [key, names] of FIELD_NAMES) {
+    const field = names.map((name) => byName(root, name)).find(Boolean)
+    if (field) result[key] = field
+  }
+  delete result.firstName
+  delete result.lastName
+  return result
+}
+
+function resumeInput(): HTMLInputElement | null {
+  const root = form() ?? document
+  return (
+    root.querySelector<HTMLInputElement>('#resume-upload-input') ??
+    root.querySelector<HTMLInputElement>('input[type="file"][name="resume"]') ??
+    findResumeInput(root)
+  )
+}
+
+/** Lever has no cover-letter upload; its "Additional information" box is where letters go. */
+function coverLetterTextarea(): HTMLTextAreaElement | null {
+  const root = form() ?? document
+  const box = root.querySelector<HTMLTextAreaElement>('textarea[name="comments"]')
+  return box && !box.disabled && !box.readOnly && isVisible(box)
+    ? box
+    : findCoverLetterTextarea(root)
+}
+
 export const leverAdapter: ApplyFormAdapter = {
   system: 'lever',
   matches(url) {
@@ -40,24 +77,17 @@ export const leverAdapter: ApplyFormAdapter = {
     const root = form()
     return root !== null && byName(root, 'email') !== null
   },
-  resumeInput() {
-    const root = form() ?? document
-    return (
-      root.querySelector<HTMLInputElement>('#resume-upload-input') ??
-      root.querySelector<HTMLInputElement>('input[type="file"][name="resume"]') ??
-      findResumeInput(root)
-    )
+  resumeInput,
+  coverLetterInput() {
+    return findCoverLetterInput(form() ?? document, resumeInput())
   },
-  fields() {
-    const root = form() ?? document
-    const fields = matchFields(root)
-    for (const [key, names] of FIELD_NAMES) {
-      const field = names.map((name) => byName(root, name)).find(Boolean)
-      if (field) fields[key] = field
-    }
-    delete fields.firstName
-    delete fields.lastName
-    return fields
+  coverLetterTextarea,
+  fields,
+  questions() {
+    return collectQuestions(form() ?? document, 'lever', [
+      ...Object.values(fields()),
+      coverLetterTextarea() ?? undefined,
+    ])
   },
   requiredUnfilled() {
     return findRequiredUnfilled(form() ?? document)

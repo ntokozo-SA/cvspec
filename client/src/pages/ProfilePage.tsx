@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent, type ReactElement } from 'react'
 import { Button } from '../components/Layout'
+import { SavedAnswers } from '../components/SavedAnswers'
 import { useOnline } from '../hooks/useOnline'
 import { getProfile, updateProfile } from '../lib/api'
 import type { ApplicantProfileInput } from '../types'
@@ -107,8 +108,11 @@ export function ProfilePage(): ReactElement {
         <div>
           <h1>Application profile</h1>
           <p>
-            The CVSpec extension fills these details into Greenhouse, Lever and other application
-            forms, alongside your tailored resume. You always review and submit the form yourself.
+            The CVSpec extension fills these details and your saved answers into Greenhouse, Lever,
+            Workday, SmartRecruiters, SuccessFactors, Workable and other application forms,
+            alongside your tailored resume and cover letter. Jobs saved from PNet, Careers24,
+            CareerJunction and OfferZen work the same way when they link to an employer&apos;s
+            form. You always sign in, review and submit the form yourself.
           </p>
         </div>
       </div>
@@ -153,6 +157,8 @@ export function ProfilePage(): ReactElement {
           </Button>
         </form>
       )}
+
+      <SavedAnswers disabled={!online} />
     </div>
   )
 }

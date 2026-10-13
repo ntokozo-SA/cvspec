@@ -1,10 +1,20 @@
+import type { QueueItem, QueueStatus } from '../background/queue'
 import type {
+  AnswerInput,
   Application,
+  ApplicationAnswer,
   ApplicationStatus,
   ApplyPackage,
   AuthState,
   Comparison,
+  CoverLetter,
+  CoverLetterFormat,
+  CoverLetterLength,
+  CoverLetterTone,
+  DraftedAnswer,
+  QuestionPayload,
   ResumeSummary,
+  SavedAnswer,
   ScrapedJob,
   Tailoring,
   TailoredFile,
@@ -31,6 +41,40 @@ export type ExtensionRequest =
   | { type: 'SET_APPLY_CONTEXT'; applicationId: string }
   | { type: 'GET_APPLY_PACKAGE'; applicationId: string }
   | { type: 'MARK_SUBMITTED'; applicationId: string }
+  | { type: 'GET_ANSWERS'; applicationId: string }
+  /** Question labels and options only; sensitive questions are never sent. */
+  | { type: 'DRAFT_ANSWERS'; applicationId: string; questions: QuestionPayload[] }
+  | { type: 'SAVE_ANSWERS'; applicationId: string; answers: AnswerInput[] }
+  | { type: 'LIST_BANK' }
+  | {
+      type: 'SAVE_BANK_ANSWER'
+      answer: Pick<SavedAnswer, 'category' | 'question' | 'answer'>
+    }
+  | {
+      type: 'DRAFT_COVER_LETTER'
+      applicationId: string
+      tone: CoverLetterTone
+      length: CoverLetterLength
+    }
+  | { type: 'SAVE_COVER_LETTER'; applicationId: string; coverLetter: string }
+  /** Builds the saved letter as a file on the server; nothing is stored. */
+  | { type: 'GET_COVER_LETTER_FILE'; applicationId: string; format: CoverLetterFormat }
+  /** Records the application form URL the first time a linked form loads. */
+  | { type: 'SET_APPLY_URL'; applicationId: string; url: string }
+  /** From the CVSpec web app: opens the extension's queue page. */
+  | { type: 'QUEUE_OPEN' }
+  /** The queue saved in CVSpec, before it is started. */
+  | { type: 'QUEUE_PREVIEW' }
+  /** From the queue page, on the user's click. */
+  | { type: 'QUEUE_START' }
+  | { type: 'QUEUE_RESUME' }
+  | { type: 'QUEUE_STATUS' }
+  /** Only after the current job was submitted. */
+  | { type: 'QUEUE_NEXT' }
+  | { type: 'QUEUE_SKIP' }
+  | { type: 'QUEUE_STOP' }
+  /** The job board opens its own form for this job, so the queue skips it. */
+  | { type: 'QUEUE_BUILT_IN'; applicationId: string }
 
 /** Sent from the popup to the job board content script in the active tab. */
 export interface ExtractJobRequest {
@@ -55,6 +99,24 @@ export interface ResponseMap {
   SET_APPLY_CONTEXT: Application
   GET_APPLY_PACKAGE: ApplyPackage
   MARK_SUBMITTED: Application
+  GET_ANSWERS: ApplicationAnswer[]
+  DRAFT_ANSWERS: DraftedAnswer[]
+  SAVE_ANSWERS: ApplicationAnswer[]
+  LIST_BANK: SavedAnswer[]
+  SAVE_BANK_ANSWER: SavedAnswer
+  DRAFT_COVER_LETTER: CoverLetter
+  SAVE_COVER_LETTER: CoverLetter
+  GET_COVER_LETTER_FILE: TailoredFile
+  SET_APPLY_URL: null
+  QUEUE_OPEN: null
+  QUEUE_PREVIEW: QueueItem[]
+  QUEUE_START: QueueStatus
+  QUEUE_RESUME: QueueStatus
+  QUEUE_STATUS: QueueStatus
+  QUEUE_NEXT: QueueStatus
+  QUEUE_SKIP: QueueStatus
+  QUEUE_STOP: QueueStatus
+  QUEUE_BUILT_IN: QueueStatus
 }
 
 export type ExtensionResponse<T> =

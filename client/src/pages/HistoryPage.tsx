@@ -10,18 +10,8 @@ import {
   scoreTailoredResume,
   type TailoredScore,
 } from '../lib/api'
+import { saveBlob } from '../lib/download'
 import type { Comparison } from '../types'
-
-function saveBlob(blob: Blob, fileName: string): void {
-  const url = URL.createObjectURL(blob)
-  const link = document.createElement('a')
-  link.href = url
-  link.download = fileName
-  document.body.appendChild(link)
-  link.click()
-  link.remove()
-  setTimeout(() => URL.revokeObjectURL(url), 1000)
-}
 
 export function HistoryPage(): ReactElement {
   const [items, setItems] = useState<Comparison[]>([])

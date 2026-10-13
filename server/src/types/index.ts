@@ -40,6 +40,58 @@ export interface ApplicantProfile {
   saved: boolean
 }
 
+export const ANSWER_CATEGORIES = [
+  'salary',
+  'notice_period',
+  'start_date',
+  'relocation',
+  'work_authorization',
+  'motivation',
+  'referral_source',
+  'other',
+] as const
+
+export type AnswerCategory = (typeof ANSWER_CATEGORIES)[number]
+
+export type QuestionKind = 'text' | 'textarea' | 'select' | 'radio' | 'checkbox'
+
+export type AnswerSource = 'bank' | 'ai' | 'user'
+
+/** A custom question read from an application form: its label and options, never its value. */
+export interface QuestionInput {
+  key: string
+  label: string
+  kind: QuestionKind
+  options: string[]
+  maxLength: number | null
+  category: AnswerCategory
+  required: boolean
+}
+
+export interface SavedAnswer {
+  id: string
+  category: AnswerCategory
+  question: string
+  answer: string
+  updatedAt: string
+}
+
+export interface ApplicationAnswer {
+  questionKey: string
+  questionLabel: string
+  answer: string
+  source: AnswerSource
+  updatedAt: string
+}
+
+export interface DraftedAnswer {
+  key: string
+  answer: string
+  source: AnswerSource
+  /** True when CVSpec could not answer from what it knows; the candidate must fill it in. */
+  needsUserInput: boolean
+}
+
 export interface ScoreResult {
   matchScore: number
   matchedSkills: string[]

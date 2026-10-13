@@ -1,0 +1,55 @@
+<main>
+  <h1>Backend Engineer</h1>
+  <form data-ui="application-form" novalidate>
+    <div>
+      <label for="firstname">First name *</label>
+      <input id="firstname" name="firstname" data-ui="firstname" required />
+    </div>
+    <div>
+      <label for="lastname">Last name *</label>
+      <input id="lastname" name="lastname" data-ui="lastname" required />
+    </div>
+    <div>
+      <label for="email">Email *</label>
+      <input id="email" name="email" type="email" data-ui="email" required />
+    </div>
+    <div>
+      <label for="headline">Headline</label>
+      <input id="headline" name="headline" data-ui="headline" />
+    </div>
+    <div>
+      <label for="phone">Phone</label>
+      <input id="phone" name="phone" type="tel" data-ui="phone" />
+    </div>
+    <div>
+      <label for="address">Address</label>
+      <input id="address" name="address" data-ui="address" />
+    </div>
+    <div>
+      <span id="resume-label">Resume *</span>
+      <input
+        type="file"
+        name="resume"
+        data-ui="resume"
+        aria-labelledby="resume-label"
+        accept=".pdf,.doc,.docx,.odt,.rtf"
+      />
+    </div>
+    <div>
+      <label for="cover_letter">Cover letter</label>
+      <textarea id="cover_letter" name="cover_letter" data-ui="cover_letter"></textarea>
+    </div>
+    <div data-ui="QA_1234">
+      <label for="QA_1234">What is your notice period? *</label>
+      <input id="QA_1234" name="QA_1234" required />
+    </div>
+    <div data-ui="QA_5678">
+      <fieldset>
+        <legend>Do you require visa sponsorship to work in South Africa?</legend>
+        <label><input type="radio" name="QA_5678" value="true" /> Yes</label>
+        <label><input type="radio" name="QA_5678" value="false" /> No</label>
+      </fieldset>
+    </div>
+    <button type="submit" data-ui="apply-button">Submit application</button>
+  </form>
+</main>

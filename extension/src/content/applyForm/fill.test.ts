@@ -1,12 +1,24 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import type { ApplicantProfile, TailoredFile } from '../../shared/types'
+import type { ApplicantProfile, CoverLetterFormat, TailoredFile } from '../../shared/types'
 import { genericFormAdapter } from './adapters/generic'
 import { greenhouseAdapter } from './adapters/greenhouse'
 import { leverAdapter } from './adapters/lever'
 import greenhouseHtml from './__fixtures__/greenhouse.html?raw'
 import leverHtml from './__fixtures__/lever.html?raw'
+import leverCoverHtml from './__fixtures__/lever-cover.html?raw'
 import plainHtml from './__fixtures__/plain.html?raw'
-import { acceptsDocx, DOCX_TYPE, fillForm, findRequiredUnfilled, setFieldValue } from './fill'
+import greenhouseQuestionsHtml from './__fixtures__/greenhouse-questions.html?raw'
+import plainSaHtml from './__fixtures__/plain-sa.html?raw'
+import {
+  acceptsDocx,
+  acceptsPdf,
+  DOCX_TYPE,
+  fillAnswers,
+  fillForm,
+  findRequiredUnfilled,
+  SENSITIVE_ATTR,
+  setFieldValue,
+} from './fill'
 
 const profile: ApplicantProfile = {
   firstName: 'Jane',
@@ -172,6 +184,243 @@ describe('fillForm on a plain form', () => {
     expect(input('input[name="q"]').value).toBe('')
 
     expect(report.needsInput).toBe(1)
+  })
+})
+
+describe('fillForm with sensitive questions', () => {
+  beforeEach(() => {
+    document.body.innerHTML = greenhouseQuestionsHtml
+  })
+
+  it('outlines sensitive questions in purple, separately from required fields', async () => {
+    const report = await fillForm(
+      greenhouseAdapter,
+      { profile, file, fileError: null },
+      { settleMs: 0 },
+    )
+
+    expect(report.sensitive).toBe(5)
+    const idField = input('#question_15')
+    expect(idField.value).toBe('')
+    expect(idField.getAttribute(SENSITIVE_ATTR)).toBe('true')
+    expect(idField.hasAttribute('data-cvspec-needs-input')).toBe(false)
+    expect(idField.title).toMatch(/answer this yourself/i)
+    expect(document.querySelector('#job_application_race')?.getAttribute(SENSITIVE_ATTR)).toBe(
+      'true',
+    )
+    expect(document.querySelector('#question_10')?.hasAttribute('data-cvspec-needs-input')).toBe(
+      true,
+    )
+  })
+})
+
+describe('fillAnswers', () => {
+  it('fills text, select, radio and checkbox questions and never sensitive ones', async () => {
+    document.body.innerHTML = plainSaHtml
+    const questions = genericFormAdapter.questions()
+    const keyOf = (label: string) => {
+      const found = questions.find((question) => question.label === label)
+      if (!found) throw new Error(`No question ${label}`)
+      return found.key
+    }
+    const answers = new Map<string, string>([
+      [keyOf('Motivation: why should we hire you?'), 'I have audited three listed companies.'],
+      [keyOf('Expected salary'), 'R30 000 per month'],
+      [keyOf('Notice period'), '1 month'],
+      [keyOf('Willing to relocate'), 'Yes'],
+      [keyOf('Languages spoken'), 'English; isiZulu'],
+      [keyOf('SA ID number'), '8001015009087'],
+      [keyOf('Gender'), 'Female'],
+      [keyOf('Group'), 'African'],
+    ])
+
+    const result = await fillAnswers(questions, answers)
+
+    expect(result.answered).toHaveLength(5)
+    expect(document.querySelector<HTMLTextAreaElement>('#why')?.value).toMatch(/audited/)
+    expect(input('#sal').value).toBe('R30 000 per month')
+    expect(document.querySelector<HTMLSelectElement>('#notice')?.value).toBe('1 month')
+    expect(input('input[name="relocate"]').checked).toBe(true)
+    const languages = Array.from(
+      document.querySelectorAll<HTMLInputElement>('input[name="lang"]'),
+    ).map((box) => box.checked)
+    expect(languages).toEqual([true, false, true])
+
+    expect(input('#idno').value).toBe('')
+    expect(
+      Array.from(document.querySelectorAll<HTMLInputElement>('input[name="gender"]')).some(
+        (radio) => radio.checked,
+      ),
+    ).toBe(false)
+    expect(document.querySelector<HTMLSelectElement>('#group')?.value).toBe('')
+  })
+
+  it('keeps answers the page already has and reports options that do not exist', async () => {
+    document.body.innerHTML = greenhouseQuestionsHtml
+    const questions = greenhouseAdapter.questions()
+    const [why, , notice, relocate] = questions.filter((question) => !question.sensitive)
+    document.querySelector<HTMLTextAreaElement>('#question_10')!.value = 'My own words'
+
+    const result = await fillAnswers(
+      questions,
+      new Map([
+        [why.key, 'Drafted'],
+        [notice.key, '6 weeks'],
+        [relocate.key, 'No'],
+      ]),
+    )
+
+    expect(document.querySelector<HTMLTextAreaElement>('#question_10')?.value).toBe('My own words')
+    expect(result.kept).toEqual([why.key])
+    expect(result.unmatched).toEqual([notice.key])
+    expect(
+      document.querySelector<HTMLInputElement>('input[name="question_13"][value="0"]')?.checked,
+    ).toBe(true)
+  })
+})
+
+describe('cover letters', () => {
+  const letterText = 'Dear Hiring Team,\n\nI would like to apply for this role.'
+  const letter = (fetched: CoverLetterFormat[] = []) => ({
+    text: letterText,
+    fetchFile: async (format: CoverLetterFormat): Promise<TailoredFile> => {
+      fetched.push(format)
+      return {
+        base64: btoa(format === 'pdf' ? '%PDF-1.7' : 'PK docx'),
+        fileName: `Jane-Doe-cover-letter.${format}`,
+        unapplied: [],
+        mimeType: format === 'pdf' ? 'application/pdf' : DOCX_TYPE,
+      }
+    },
+  })
+
+  it('attaches a DOCX letter to the Greenhouse cover letter upload', async () => {
+    document.body.innerHTML = greenhouseHtml
+    const fetched: CoverLetterFormat[] = []
+    const report = await fillForm(
+      greenhouseAdapter,
+      { profile, file, fileError: null },
+      { settleMs: 0, coverLetter: letter(fetched) },
+    )
+
+    expect(fetched).toEqual(['docx'])
+    expect(report.coverLetterFileName).toBe('Jane-Doe-cover-letter.docx')
+    expect(input('#cover_letter').files?.[0]?.name).toBe('Jane-Doe-cover-letter.docx')
+    expect(input('#cover_letter').files?.[0]?.type).toBe(DOCX_TYPE)
+    expect(input('#resume').files?.[0]?.name).toBe('Jane-Doe-tailored.docx')
+  })
+
+  it('sends a PDF when the upload only takes PDFs', async () => {
+    document.body.innerHTML = plainHtml
+    const fetched: CoverLetterFormat[] = []
+    const report = await fillForm(
+      genericFormAdapter,
+      { profile, file, fileError: null },
+      { settleMs: 0, coverLetter: letter(fetched) },
+    )
+
+    expect(fetched).toEqual(['pdf'])
+    expect(input('#cl').files?.[0]?.type).toBe('application/pdf')
+    expect(report.coverLetterFileName).toBe('Jane-Doe-cover-letter.pdf')
+    expect(input('#cv').files?.length).toBe(0)
+  })
+
+  it('pastes into the Lever additional information box and keeps it out of the questions', async () => {
+    document.body.innerHTML = leverCoverHtml
+    const fetched: CoverLetterFormat[] = []
+    const report = await fillForm(
+      leverAdapter,
+      { profile, file, fileError: null },
+      { settleMs: 0, coverLetter: letter(fetched) },
+    )
+
+    expect(fetched).toEqual([])
+    expect(report.coverLetterPasted).toBe(true)
+    expect(document.querySelector<HTMLTextAreaElement>('textarea[name="comments"]')?.value).toBe(
+      letterText,
+    )
+    expect(input('#resume-upload-input').files?.[0]?.name).toBe('Jane-Doe-tailored.docx')
+    const labels = leverAdapter.questions().map((question) => question.label)
+    expect(labels).toEqual(['Why do you want to join Acme?'])
+  })
+
+  it('leaves a cover letter box that already has text', async () => {
+    document.body.innerHTML = leverCoverHtml
+    const box = document.querySelector<HTMLTextAreaElement>('textarea[name="comments"]')!
+    box.value = 'My own note'
+    const report = await fillForm(
+      leverAdapter,
+      { profile, file: null, fileError: null },
+      { settleMs: 0, coverLetter: letter() },
+    )
+    expect(box.value).toBe('My own note')
+    expect(report.coverLetterPasted).toBe(false)
+  })
+
+  it('never attaches the letter to the resume input', async () => {
+    document.body.innerHTML = `
+      <form>
+        <label for="docs">Resume and cover letter</label>
+        <input id="docs" type="file" />
+        <label for="em">Email</label>
+        <input id="em" type="email" />
+      </form>`
+    const fetched: CoverLetterFormat[] = []
+    const report = await fillForm(
+      genericFormAdapter,
+      { profile, file: null, fileError: null },
+      { settleMs: 0, coverLetter: letter(fetched) },
+    )
+    expect(genericFormAdapter.resumeInput()?.id).toBe('docs')
+    expect(genericFormAdapter.coverLetterInput()).toBeNull()
+    expect(fetched).toEqual([])
+    expect(input('#docs').files?.length).toBe(0)
+    expect(report.coverLetterFileName).toBeNull()
+  })
+
+  it('reports a failed build and attaches nothing', async () => {
+    document.body.innerHTML = greenhouseHtml
+    const report = await fillForm(
+      greenhouseAdapter,
+      { profile, file: null, fileError: null },
+      {
+        settleMs: 0,
+        coverLetter: {
+          text: letterText,
+          fetchFile: async () => {
+            throw new Error('Write or generate a cover letter for this job first')
+          },
+        },
+      },
+    )
+    expect(report.coverLetterProblem).toMatch(/cover letter/)
+    expect(input('#cover_letter').files?.length).toBe(0)
+  })
+
+  it('skips letters that are only whitespace', async () => {
+    document.body.innerHTML = greenhouseHtml
+    const fetched: CoverLetterFormat[] = []
+    await fillForm(
+      greenhouseAdapter,
+      { profile, file: null, fileError: null },
+      { settleMs: 0, coverLetter: { ...letter(fetched), text: '   ' } },
+    )
+    expect(fetched).toEqual([])
+  })
+})
+
+describe('acceptsPdf', () => {
+  it('allows PDFs, wildcards and empty accept lists only', () => {
+    const withAccept = (accept: string) => {
+      const element = document.createElement('input')
+      element.type = 'file'
+      element.accept = accept
+      return element
+    }
+    expect(acceptsPdf(withAccept(''))).toBe(true)
+    expect(acceptsPdf(withAccept('.pdf'))).toBe(true)
+    expect(acceptsPdf(withAccept('application/pdf'))).toBe(true)
+    expect(acceptsPdf(withAccept('.doc,.docx'))).toBe(false)
   })
 })
 

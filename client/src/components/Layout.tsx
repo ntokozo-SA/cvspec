@@ -174,6 +174,7 @@ const appNavItems = [
   { to: '/app/job-specs', end: false, label: 'Jobs', icon: 'jobs' },
   { to: '/app/compare', end: false, label: 'Compare', icon: 'compare' },
   { to: '/app/applications', end: false, label: 'Applied', icon: 'applications' },
+  { to: '/app/queue', end: false, label: 'Queue', icon: 'queue' },
   { to: '/app/history', end: false, label: 'History', icon: 'history' },
 ] as const
 
@@ -232,6 +233,13 @@ function NavIcon({
           <rect x="3" y="4" width="5" height="16" rx="1.2" />
           <rect x="10" y="4" width="5" height="11" rx="1.2" />
           <rect x="17" y="4" width="4" height="7" rx="1.2" />
+        </svg>
+      )
+    case 'queue':
+      return (
+        <svg {...common}>
+          <path d="M4 6h11M4 12h11M4 18h7" />
+          <path d="M18 14v6M15 17l3 3 3-3" />
         </svg>
       )
     case 'history':

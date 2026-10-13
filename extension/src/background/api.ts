@@ -1,11 +1,20 @@
 import { API_BASE } from '../shared/config'
 import { ExtensionError } from '../shared/messages'
 import type {
+  AnswerInput,
   ApplicantProfile,
   Application,
+  ApplicationAnswer,
   ApplicationStatus,
   Comparison,
+  CoverLetter,
+  CoverLetterFormat,
+  CoverLetterLength,
+  CoverLetterTone,
+  DraftedAnswer,
+  QuestionPayload,
   ResumeSummary,
+  SavedAnswer,
   ScrapedJob,
   Tailoring,
   TailoredFile,
@@ -57,9 +66,14 @@ export function listApplications(): Promise<Application[]> {
 }
 
 export async function getApplication(applicationId: string): Promise<Application> {
-  const application = (await listApplications()).find((item) => item.id === applicationId)
-  if (!application) throw new ExtensionError('This saved job no longer exists in CVSpec', 404)
-  return application
+  try {
+    return await apiFetch<Application>(`/applications/${encodeURIComponent(applicationId)}`)
+  } catch (err) {
+    if (err instanceof ExtensionError && err.status === 404) {
+      throw new ExtensionError('This saved job no longer exists in CVSpec', 404)
+    }
+    throw err
+  }
 }
 
 export function saveApplication(job: ScrapedJob, analyze = true): Promise<Application> {
@@ -73,7 +87,22 @@ export function saveApplication(job: ScrapedJob, analyze = true): Promise<Applic
       board: job.board,
       descriptionText: job.descriptionText,
       analyze,
+      builtInApply: job.builtInApply,
     }),
+  })
+}
+
+export function getApplyQueue(): Promise<Application[]> {
+  return apiFetch<Application[]>('/applications/queue')
+}
+
+export function updateApplyInfo(
+  applicationId: string,
+  patch: { applyUrl?: string; builtInApply?: boolean },
+): Promise<Application> {
+  return apiFetch<Application>(`/applications/${applicationId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(patch),
   })
 }
 
@@ -120,15 +149,19 @@ function toBase64(buffer: ArrayBuffer): string {
   return btoa(binary)
 }
 
+function fileNameFrom(response: Response, fallback: string): string {
+  const disposition = response.headers.get('Content-Disposition') ?? ''
+  const encoded = disposition.match(/filename\*=UTF-8''([^;]+)/i)?.[1]
+  const plain = disposition.match(/filename="([^"]+)"/i)?.[1]
+  return encoded ? decodeURIComponent(encoded) : (plain ?? fallback)
+}
+
 /** Builds the tailored DOCX on the server. The server does not store it. */
 export async function fetchTailoredResume(tailoring: Tailoring): Promise<TailoredFile> {
   const response = await apiRequest(`/comparisons/${tailoring.comparisonId}/tailored-resume`, {
     method: 'POST',
     body: JSON.stringify({ recommendations: tailoring.recommendations }),
   })
-  const disposition = response.headers.get('Content-Disposition') ?? ''
-  const encoded = disposition.match(/filename\*=UTF-8''([^;]+)/i)?.[1]
-  const plain = disposition.match(/filename="([^"]+)"/i)?.[1]
   const unapplied = (response.headers.get('X-Unapplied-Recommendations') ?? '')
     .split(',')
     .filter(Boolean)
@@ -136,8 +169,45 @@ export async function fetchTailoredResume(tailoring: Tailoring): Promise<Tailore
 
   return {
     base64: toBase64(await response.arrayBuffer()),
-    fileName: encoded ? decodeURIComponent(encoded) : (plain ?? 'tailored-resume.docx'),
+    fileName: fileNameFrom(response, 'tailored-resume.docx'),
     unapplied,
+  }
+}
+
+export function draftCoverLetter(
+  applicationId: string,
+  options: { tone: CoverLetterTone; length: CoverLetterLength },
+): Promise<CoverLetter> {
+  return apiFetch<CoverLetter>(`/applications/${applicationId}/cover-letter/draft`, {
+    method: 'POST',
+    body: JSON.stringify(options),
+  })
+}
+
+export function saveCoverLetter(applicationId: string, coverLetter: string): Promise<CoverLetter> {
+  return apiFetch<CoverLetter>(`/applications/${applicationId}/cover-letter`, {
+    method: 'PUT',
+    body: JSON.stringify({ coverLetter }),
+  })
+}
+
+/** Builds the saved cover letter as DOCX or PDF on the server. The server does not store it. */
+export async function fetchCoverLetterFile(
+  applicationId: string,
+  format: CoverLetterFormat,
+): Promise<TailoredFile> {
+  const response = await apiRequest(
+    `/applications/${applicationId}/cover-letter/file?format=${format}`,
+    { method: 'POST' },
+  )
+  return {
+    base64: toBase64(await response.arrayBuffer()),
+    fileName: fileNameFrom(response, `cover-letter.${format}`),
+    unapplied: [],
+    mimeType:
+      format === 'pdf'
+        ? 'application/pdf'
+        : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
   }
 }
 
@@ -147,4 +217,42 @@ export function getProfile(): Promise<ApplicantProfile> {
 
 export function listResumes(): Promise<ResumeSummary[]> {
   return apiFetch<ResumeSummary[]>('/resumes')
+}
+
+export function getAnswers(applicationId: string): Promise<ApplicationAnswer[]> {
+  return apiFetch<ApplicationAnswer[]>(`/applications/${applicationId}/answers`)
+}
+
+export async function draftAnswers(
+  applicationId: string,
+  questions: QuestionPayload[],
+): Promise<DraftedAnswer[]> {
+  const body = await apiFetch<{ answers: DraftedAnswer[] }>(
+    `/applications/${applicationId}/answers/draft`,
+    { method: 'POST', body: JSON.stringify({ questions }) },
+  )
+  return body.answers
+}
+
+export function saveAnswers(
+  applicationId: string,
+  answers: AnswerInput[],
+): Promise<ApplicationAnswer[]> {
+  return apiFetch<ApplicationAnswer[]>(`/applications/${applicationId}/answers`, {
+    method: 'PUT',
+    body: JSON.stringify({ answers }),
+  })
+}
+
+export function listBank(): Promise<SavedAnswer[]> {
+  return apiFetch<SavedAnswer[]>('/profile/answers')
+}
+
+export function saveBankAnswer(
+  answer: Pick<SavedAnswer, 'category' | 'question' | 'answer'>,
+): Promise<SavedAnswer> {
+  return apiFetch<SavedAnswer>('/profile/answers', {
+    method: 'POST',
+    body: JSON.stringify(answer),
+  })
 }

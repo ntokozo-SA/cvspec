@@ -11,6 +11,8 @@ export interface ScrapedJob {
   location?: string
   url: string
   descriptionText: string
+  /** The board's Apply opens its own form, which CVSpec never fills. */
+  builtInApply?: boolean
 }
 
 export interface Recommendation {
@@ -44,6 +46,11 @@ export interface Application {
   comparison: Comparison | null
   tailored_comparison_id: string | null
   tailored_recommendations: number[] | null
+  cover_letter?: string | null
+  cover_letter_updated_at?: string | null
+  queue_position?: number | null
+  apply_url?: string | null
+  built_in_apply?: boolean | null
 }
 
 export interface Tailoring {
@@ -58,12 +65,23 @@ export interface TailoredScore {
   missingSkills: string[]
 }
 
-/** A generated DOCX. Messages are JSON-serialized, so the bytes travel as base64. */
+/** A generated file. Messages are JSON-serialized, so the bytes travel as base64. */
 export interface TailoredFile {
   base64: string
   fileName: string
   /** Recommendation indexes that could not be placed in the document. */
   unapplied: number[]
+  /** Defaults to DOCX. */
+  mimeType?: string
+}
+
+export type CoverLetterTone = 'professional' | 'warm' | 'concise'
+export type CoverLetterLength = 'short' | 'medium' | 'long'
+export type CoverLetterFormat = 'docx' | 'pdf'
+
+export interface CoverLetter {
+  coverLetter: string | null
+  updatedAt: string | null
 }
 
 export interface ApplicantProfile {
@@ -84,6 +102,61 @@ export interface ApplyPackage {
   file: TailoredFile | null
   /** Why `file` is missing, shown to the user instead of attaching a resume. */
   fileError: string | null
+}
+
+export type AnswerCategory =
+  | 'salary'
+  | 'notice_period'
+  | 'start_date'
+  | 'relocation'
+  | 'work_authorization'
+  | 'motivation'
+  | 'referral_source'
+  | 'other'
+
+export type QuestionKind = 'text' | 'textarea' | 'select' | 'radio' | 'checkbox'
+
+export type AnswerSource = 'bank' | 'ai' | 'user'
+
+/** What the server sees of a form question: its label and options, never the page's values. */
+export interface QuestionPayload {
+  key: string
+  label: string
+  kind: QuestionKind
+  options: string[]
+  maxLength: number | null
+  category: AnswerCategory
+  required: boolean
+}
+
+export interface SavedAnswer {
+  id: string
+  category: AnswerCategory
+  question: string
+  answer: string
+  updatedAt: string
+}
+
+export interface ApplicationAnswer {
+  questionKey: string
+  questionLabel: string
+  answer: string
+  source: AnswerSource
+  updatedAt: string
+}
+
+export interface DraftedAnswer {
+  key: string
+  answer: string
+  source: AnswerSource
+  needsUserInput: boolean
+}
+
+export interface AnswerInput {
+  questionKey: string
+  questionLabel: string
+  answer: string
+  source: AnswerSource
 }
 
 export interface ResumeSummary {

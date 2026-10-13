@@ -1,5 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest'
+import { glassdoorAdapter } from './glassdoor'
 import { looksBuiltInApply } from './heuristics'
+import { indeedAdapter } from './indeed'
 
 function button(html: string): HTMLElement {
   document.body.innerHTML = html
@@ -24,5 +26,34 @@ describe('looksBuiltInApply', () => {
     expect(looksBuiltInApply(button('<button>Apply</button>'))).toBe(false)
     expect(looksBuiltInApply(button('<a href="#">Apply on company site</a>'))).toBe(false)
     expect(looksBuiltInApply(null)).toBe(false)
+  })
+})
+
+describe('Indeed built-in apply', () => {
+  it('flags Indeed Apply', () => {
+    document.body.innerHTML = '<div><button id="indeedApplyButton">Apply now</button></div>'
+    expect(indeedAdapter.isBuiltInApply()).toBe(true)
+
+    document.body.innerHTML =
+      '<div class="jobsearch-IndeedApplyButton-contentWrapper"><button>Apply now</button></div>'
+    expect(indeedAdapter.isBuiltInApply()).toBe(true)
+  })
+
+  it('does not flag the company-site link', () => {
+    document.body.innerHTML =
+      '<div id="applyButtonLinkContainer"><a href="https://acme.example/jobs/1">Apply on company site</a></div>'
+    expect(indeedAdapter.isBuiltInApply()).toBe(false)
+  })
+})
+
+describe('Glassdoor built-in apply', () => {
+  it('flags Easy Apply', () => {
+    document.body.innerHTML = '<button data-test="easyApply">Apply</button>'
+    expect(glassdoorAdapter.isBuiltInApply()).toBe(true)
+  })
+
+  it('does not flag the employer apply button', () => {
+    document.body.innerHTML = '<button data-test="applyButton">Apply on employer site</button>'
+    expect(glassdoorAdapter.isBuiltInApply()).toBe(false)
   })
 })

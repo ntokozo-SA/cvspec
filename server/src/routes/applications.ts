@@ -8,8 +8,8 @@ import {
 } from '../services/comparisonRunner.js'
 import { createJobSpecFromText } from '../services/jobSpecCreator.js'
 
-const APPLICATION_SELECT =
-  '*, job_spec:job_specs(id, source_url, parsed_json, created_at), comparison:comparisons(id, match_score, matched_skills, missing_skills, recommendations, resume_id, created_at)'
+export const APPLICATION_SELECT =
+  '*, job_spec:job_specs(id, source_url, parsed_json, created_at), comparison:comparisons!comparison_id(id, match_score, matched_skills, missing_skills, recommendations, resume_id, created_at)'
 
 const JOB_BOARDS = [
   'linkedin',
@@ -34,6 +34,10 @@ const JOB_BOARDS = [
   'fiverr',
   'idealist',
   'peoplecurated',
+  'pnet',
+  'careers24',
+  'careerjunction',
+  'offerzen',
   'other',
 ] as const
 
@@ -45,7 +49,15 @@ const createSchema = z.object({
   board: z.enum(JOB_BOARDS),
   descriptionText: z.string().trim().min(40, 'Job description text is too short').max(60000),
   analyze: z.boolean().optional().default(true),
+  /** The board's Apply opens its own form (Easy Apply, Indeed Apply), which CVSpec never fills. */
+  builtInApply: z.boolean().optional(),
 })
+
+const httpUrl = z
+  .string()
+  .url()
+  .max(2000)
+  .refine((value) => /^https?:\/\//i.test(value), { message: 'Use an http or https link' })
 
 const tailoringSchema = z.object({
   comparisonId: z.string().uuid(),
@@ -60,12 +72,12 @@ const updateSchema = z
     status: z.enum(['saved', 'applied', 'interviewing', 'offer', 'rejected']).optional(),
     resumeId: z.string().uuid().nullable().optional(),
     tailoring: tailoringSchema.nullable().optional(),
+    applyUrl: httpUrl.nullable().optional(),
+    builtInApply: z.boolean().optional(),
   })
-  .refine(
-    (body) =>
-      body.status !== undefined || body.resumeId !== undefined || body.tailoring !== undefined,
-    { message: 'Nothing to update' },
-  )
+  .refine((body) => Object.values(body).some((value) => value !== undefined), {
+    message: 'Nothing to update',
+  })
 
 class TailoringInputError extends Error {}
 
@@ -117,11 +129,12 @@ const QUERY_KEYED_BOARDS: Array<[RegExp, string[]]> = [
   [/(^|\.)simplyhired\.(com|co\.uk|ca)$/, ['job']],
   [/(^|\.)wellfound\.com$/, ['job_listing_slug']],
   [/(^|\.)flexjobs\.com$/, ['id']],
+  [/(^|\.)careerjunction\.co\.za$/, ['jobid']],
 ]
 
 /** Boards whose job URLs carry the id in the path, so the query string is only tracking. */
 const PATH_KEYED_BOARDS =
-  /(^|\.)(careerbuilder\.com|weworkremotely\.com|remote\.co|dice\.com|hired\.com|builtin[a-z]*\.(com|org)|joinhandshake\.(com|co\.uk)|snagajob\.com|idealist\.org|peoplecurated\.com)$/
+  /(^|\.)(careerbuilder\.com|weworkremotely\.com|remote\.co|dice\.com|hired\.com|builtin[a-z]*\.(com|org)|joinhandshake\.(com|co\.uk)|snagajob\.com|idealist\.org|peoplecurated\.com|careers24\.com|offerzen\.com)$/
 
 const GOOGLE_HOST = /^www\.google\.(com|co\.uk|ca|com\.au|co\.za|co\.in|ie)$/
 
@@ -146,6 +159,12 @@ export function normalizeJobUrl(raw: string): string {
 
   const upworkId = host.endsWith('upwork.com') ? url.pathname.match(/~(0[0-9a-z]{6,})/i)?.[1] : null
   if (upworkId) return `https://www.upwork.com/jobs/~${upworkId}`
+
+  if (host === 'pnet.co.za' || host.endsWith('.pnet.co.za')) {
+    url.search = ''
+    url.pathname = url.pathname.replace(/(--\d+)-inline\.html$/, '$1.html')
+    return url.toString()
+  }
 
   const queryKeyed = QUERY_KEYED_BOARDS.find(([pattern]) => pattern.test(url.hostname))
   if (queryKeyed) {
@@ -180,7 +199,7 @@ export function normalizeJobUrl(raw: string): string {
   return url.toString()
 }
 
-async function linkComparison(
+export async function linkComparison(
   userId: string,
   applicationId: string,
   resumeId: string,
@@ -234,6 +253,18 @@ applicationsRouter.post('/', async (req, res, next) => {
       .maybeSingle()
     if (findError) throw findError
     if (existing) {
+      if (body.builtInApply !== undefined && existing.built_in_apply !== body.builtInApply) {
+        const { data: updated, error: updateError } = await supabase
+          .from('applications')
+          .update({ built_in_apply: body.builtInApply })
+          .eq('id', existing.id)
+          .eq('user_id', user.id)
+          .select(APPLICATION_SELECT)
+          .single()
+        if (updateError) throw updateError
+        res.json(updated)
+        return
+      }
       res.json(existing)
       return
     }
@@ -256,6 +287,7 @@ applicationsRouter.post('/', async (req, res, next) => {
         location: body.location || null,
         board: body.board,
         source_url: sourceUrl,
+        built_in_apply: body.builtInApply ?? null,
       })
       .select(APPLICATION_SELECT)
       .single()
@@ -276,6 +308,26 @@ applicationsRouter.post('/', async (req, res, next) => {
   }
 })
 
+applicationsRouter.get('/:id', async (req, res, next) => {
+  try {
+    const { user } = getAuth(req)
+    const { data, error } = await getSupabaseAdmin()
+      .from('applications')
+      .select(APPLICATION_SELECT)
+      .eq('id', req.params.id)
+      .eq('user_id', user.id)
+      .maybeSingle()
+    if (error) throw error
+    if (!data) {
+      res.status(404).json({ error: 'Application not found' })
+      return
+    }
+    res.json(data)
+  } catch (err) {
+    next(err)
+  }
+})
+
 applicationsRouter.patch('/:id', async (req, res, next) => {
   try {
     const { user } = getAuth(req)
@@ -286,6 +338,18 @@ applicationsRouter.patch('/:id', async (req, res, next) => {
       patch.status_updated_at = new Date().toISOString()
     }
     if (body.resumeId !== undefined) patch.resume_id = body.resumeId
+    if (body.applyUrl !== undefined) patch.apply_url = body.applyUrl
+    if (body.builtInApply !== undefined) {
+      patch.built_in_apply = body.builtInApply
+      if (body.builtInApply) {
+        patch.queue_position = null
+        patch.queued_at = null
+      }
+    }
+    if (body.status !== undefined && body.status !== 'saved') {
+      patch.queue_position = null
+      patch.queued_at = null
+    }
     if (body.tailoring === null) {
       patch.tailored_comparison_id = null
       patch.tailored_recommendations = null

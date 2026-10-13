@@ -1,10 +1,26 @@
+import { isSensitiveQuestion } from '../../../shared/sensitive'
+import { deepQueryAll } from '../dom'
 import { findRequiredUnfilled, isVisible } from '../fill'
+import { collectQuestions } from '../questions'
+import { CONFIRM_EMAIL, describe } from './labels'
 import type { ApplyFormAdapter, ProfileField, TextField } from './types'
+
+export { describe, deepQueryAll }
 
 const TEXT_TYPES = new Set(['', 'text', 'email', 'tel', 'url', 'search'])
 
 /** Fields about other people (referrers, references, emergency contacts) are never filled. */
 const OTHER_PERSON = /\b(?:refer|emergency|manager|supervisor|recruiter)/i
+
+/** "Confirm email" boxes: filled with the email, never treated as the email field itself. */
+export function findConfirmEmailInput(root: ParentNode): HTMLInputElement | null {
+  return (
+    deepQueryAll<HTMLInputElement>(root, 'input').find(
+      (field) =>
+        isFillableText(field) && field instanceof HTMLInputElement && CONFIRM_EMAIL.test(describe(field)),
+    ) ?? null
+  )
+}
 
 const RULES: Array<{ field: ProfileField; test: (field: TextField, text: string) => boolean }> = [
   {
@@ -53,51 +69,6 @@ const RULES: Array<{ field: ProfileField; test: (field: TextField, text: string)
   },
 ]
 
-function labelText(field: HTMLElement): string {
-  const parts: string[] = []
-  const labels = (field as HTMLInputElement).labels
-  if (labels) for (const label of Array.from(labels)) parts.push(label.textContent ?? '')
-
-  const labelledBy = field.getAttribute('aria-labelledby')
-  if (labelledBy) {
-    for (const id of labelledBy.split(/\s+/)) {
-      parts.push(document.getElementById(id)?.textContent ?? '')
-    }
-  }
-
-  if (parts.join('').trim() === '') {
-    let container = field.parentElement
-    for (let depth = 0; container && depth < 3; depth += 1) {
-      const controls = container.querySelectorAll('input, textarea, select')
-      if (controls.length > 1) break
-      const label = container.querySelector('label, legend, [class*="label" i]')
-      if (label) {
-        parts.push(label.textContent ?? '')
-        break
-      }
-      container = container.parentElement
-    }
-  }
-  return parts.join(' ')
-}
-
-/** Everything that describes a field, lowercased: label first so `^name` rules can anchor on it. */
-export function describe(field: HTMLElement): string {
-  return [
-    labelText(field),
-    field.getAttribute('aria-label'),
-    field.getAttribute('placeholder'),
-    field.getAttribute('name'),
-    field.id,
-  ]
-    .filter(Boolean)
-    .join(' ')
-    .replace(/[*:]/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim()
-    .toLowerCase()
-}
-
 function isFillableText(element: Element): element is TextField {
   if (element instanceof HTMLTextAreaElement) return !element.disabled && !element.readOnly
   if (!(element instanceof HTMLInputElement)) return false
@@ -110,10 +81,13 @@ function isFillableText(element: Element): element is TextField {
 export function matchFields(root: ParentNode): Partial<Record<ProfileField, TextField>> {
   const result: Partial<Record<ProfileField, TextField>> = {}
   const used = new Set<TextField>()
-  const candidates = Array.from(root.querySelectorAll('input, textarea'))
+  const candidates = deepQueryAll(root, 'input, textarea')
     .filter(isFillableText)
     .map((field) => ({ field, text: describe(field) }))
-    .filter(({ text }) => !OTHER_PERSON.test(text))
+    .filter(
+      ({ text }) =>
+        !OTHER_PERSON.test(text) && !isSensitiveQuestion(text) && !CONFIRM_EMAIL.test(text),
+    )
 
   for (const rule of RULES) {
     if (result[rule.field]) continue
@@ -129,7 +103,7 @@ export function matchFields(root: ParentNode): Partial<Record<ProfileField, Text
 
 /** The resume file input: one labelled resume or CV, else the only non cover-letter file input. */
 export function findResumeInput(root: ParentNode): HTMLInputElement | null {
-  const inputs = Array.from(root.querySelectorAll<HTMLInputElement>('input[type="file"]')).filter(
+  const inputs = deepQueryAll<HTMLInputElement>(root, 'input[type="file"]').filter(
     (input) => !input.disabled,
   )
   const described = inputs.map((input) => ({ input, text: describe(input) }))
@@ -137,6 +111,30 @@ export function findResumeInput(root: ParentNode): HTMLInputElement | null {
   if (labelled) return labelled.input
   const others = described.filter(({ text }) => !/cover/.test(text))
   return others.length === 1 ? others[0].input : null
+}
+
+const COVER_LETTER = /\bcover(?:ing)?[\s_-]?letter\b/
+
+/** A file input described as a cover letter, never the resume input. */
+export function findCoverLetterInput(
+  root: ParentNode,
+  resume: HTMLInputElement | null,
+): HTMLInputElement | null {
+  return (
+    deepQueryAll<HTMLInputElement>(root, 'input[type="file"]').find(
+      (input) => !input.disabled && input !== resume && /\bcover/.test(describe(input)),
+    ) ?? null
+  )
+}
+
+/** A visible, editable text box described as a cover letter. */
+export function findCoverLetterTextarea(root: ParentNode): HTMLTextAreaElement | null {
+  return (
+    deepQueryAll<HTMLTextAreaElement>(root, 'textarea').find(
+      (box) =>
+        !box.disabled && !box.readOnly && isVisible(box) && COVER_LETTER.test(describe(box)),
+    ) ?? null
+  )
 }
 
 /** The form most likely to be the application: has a file input or an email field. */
@@ -158,8 +156,9 @@ const CONFIRMATION_TEXT =
   /thank(?:s| you) for (?:your )?appl|application (?:has been |was )?(?:submitted|received)|we(?:'ve| have) received your application/i
 
 export function pageShowsConfirmation(): boolean {
-  for (const heading of Array.from(
-    document.querySelectorAll<HTMLElement>('h1, h2, h3, [role="heading"], [role="alert"]'),
+  for (const heading of deepQueryAll<HTMLElement>(
+    document,
+    'h1, h2, h3, [role="heading"], [role="alert"]',
   )) {
     if (CONFIRMATION_TEXT.test(heading.textContent ?? '')) return true
   }
@@ -178,11 +177,25 @@ export const genericFormAdapter: ApplyFormAdapter = {
   resumeInput() {
     return findResumeInput(findApplicationForm() ?? document)
   },
+  coverLetterInput() {
+    const root = findApplicationForm() ?? document
+    return findCoverLetterInput(root, findResumeInput(root))
+  },
+  coverLetterTextarea() {
+    return findCoverLetterTextarea(findApplicationForm() ?? document)
+  },
   fields() {
     return matchFields(findApplicationForm() ?? document)
   },
   requiredUnfilled() {
     return findRequiredUnfilled(findApplicationForm() ?? document)
+  },
+  questions() {
+    const root = findApplicationForm() ?? document
+    return collectQuestions(root, 'generic', [
+      ...Object.values(matchFields(root)),
+      findCoverLetterTextarea(root) ?? undefined,
+    ])
   },
   isConfirmation: pageShowsConfirmation,
 }

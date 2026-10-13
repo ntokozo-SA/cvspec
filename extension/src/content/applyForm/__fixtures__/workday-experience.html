@@ -1,0 +1,39 @@
+<div data-automation-id="applyFlowPage">
+  <ol data-automation-id="progressBar">
+    <li data-automation-id="progressBarCompletedStep"><label>My Information</label></li>
+    <li data-automation-id="progressBarActiveStep">
+      <div>current step 2 of 6</div>
+      <label>My Experience</label>
+    </li>
+    <li data-automation-id="progressBarInactiveStep"><label>Application Questions</label></li>
+    <li data-automation-id="progressBarInactiveStep"><label>Voluntary Disclosures</label></li>
+    <li data-automation-id="progressBarInactiveStep"><label>Self Identify</label></li>
+    <li data-automation-id="progressBarInactiveStep"><label>Review</label></li>
+  </ol>
+  <div data-automation-id="applyFlowMyExpPage">
+    <h2>My Experience</h2>
+    <div data-automation-id="resumeSection">
+      <h3 id="resume-heading">Resume/CV</h3>
+      <div data-automation-id="file-upload-drop-zone">
+        <button type="button" data-automation-id="select-files">Select files</button>
+        <input
+          type="file"
+          data-automation-id="file-upload-input-ref"
+          aria-labelledby="resume-heading"
+          accept=".pdf,.doc,.docx"
+          style="display: none"
+        />
+      </div>
+    </div>
+    <div data-automation-id="websiteSection">
+      <div data-automation-id="formField-linkedinQuestion">
+        <label for="input-20">LinkedIn</label>
+        <input id="input-20" type="text" data-automation-id="linkedinQuestion" />
+      </div>
+    </div>
+  </div>
+  <div data-automation-id="bottom-navigation">
+    <button type="button" data-automation-id="bottom-navigation-back-button">Back</button>
+    <button type="button" data-automation-id="bottom-navigation-next-button">Save and Continue</button>
+  </div>
+</div>

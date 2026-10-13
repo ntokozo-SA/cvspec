@@ -3,11 +3,19 @@ import type {
   ApplicantProfile,
   ApplicantProfileInput,
   Application,
+  ApplicationAnswer,
   ApplicationStatus,
   Comparison,
+  CoverLetter,
+  CoverLetterFormat,
+  CoverLetterLength,
+  CoverLetterTone,
   JobSpec,
+  PrepareResult,
   Recommendation,
   Resume,
+  SavedAnswer,
+  SavedAnswerInput,
   SourceType,
 } from '../types'
 
@@ -371,6 +379,216 @@ export async function updateProfile(input: ApplicantProfileInput): Promise<Appli
   return apiFetch<ApplicantProfile>('/profile', {
     method: 'PUT',
     body: JSON.stringify(input),
+  })
+}
+
+let demoSavedAnswers: SavedAnswer[] = []
+
+export async function listSavedAnswers(): Promise<SavedAnswer[]> {
+  if (isDemoMode()) return [...demoSavedAnswers]
+  return apiFetch<SavedAnswer[]>('/profile/answers')
+}
+
+export async function createSavedAnswer(input: SavedAnswerInput): Promise<SavedAnswer> {
+  if (isDemoMode()) {
+    const answer: SavedAnswer = {
+      ...input,
+      id: crypto.randomUUID(),
+      updatedAt: new Date().toISOString(),
+    }
+    demoSavedAnswers = [answer, ...demoSavedAnswers]
+    return answer
+  }
+  return apiFetch<SavedAnswer>('/profile/answers', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  })
+}
+
+export async function updateSavedAnswer(id: string, input: SavedAnswerInput): Promise<SavedAnswer> {
+  if (isDemoMode()) {
+    const answer: SavedAnswer = { ...input, id, updatedAt: new Date().toISOString() }
+    demoSavedAnswers = demoSavedAnswers.map((item) => (item.id === id ? answer : item))
+    return answer
+  }
+  return apiFetch<SavedAnswer>(`/profile/answers/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(input),
+  })
+}
+
+export async function deleteSavedAnswer(id: string): Promise<void> {
+  if (isDemoMode()) {
+    demoSavedAnswers = demoSavedAnswers.filter((item) => item.id !== id)
+    return
+  }
+  await apiFetch<void>(`/profile/answers/${id}`, { method: 'DELETE' })
+}
+
+const demoApplicationAnswers = new Map<string, ApplicationAnswer[]>()
+
+export async function listApplicationAnswers(applicationId: string): Promise<ApplicationAnswer[]> {
+  if (isDemoMode()) return [...(demoApplicationAnswers.get(applicationId) ?? [])]
+  return apiFetch<ApplicationAnswer[]>(`/applications/${applicationId}/answers`)
+}
+
+export async function saveApplicationAnswers(
+  applicationId: string,
+  answers: Array<Pick<ApplicationAnswer, 'questionKey' | 'questionLabel' | 'answer'>>,
+): Promise<ApplicationAnswer[]> {
+  if (isDemoMode()) {
+    const now = new Date().toISOString()
+    const current = new Map(
+      (demoApplicationAnswers.get(applicationId) ?? []).map((item) => [item.questionKey, item]),
+    )
+    for (const item of answers) {
+      if (item.answer.trim()) {
+        current.set(item.questionKey, { ...item, source: 'user', updatedAt: now })
+      } else {
+        current.delete(item.questionKey)
+      }
+    }
+    const list = [...current.values()]
+    demoApplicationAnswers.set(applicationId, list)
+    return list
+  }
+  return apiFetch<ApplicationAnswer[]>(`/applications/${applicationId}/answers`, {
+    method: 'PUT',
+    body: JSON.stringify({
+      answers: answers.map((item) => ({ ...item, source: 'user' })),
+    }),
+  })
+}
+
+export async function getApplication(id: string): Promise<Application> {
+  if (isDemoMode()) {
+    const found = demoApplications.find((item) => item.id === id)
+    if (!found) throw new Error('Application not found')
+    return { ...found }
+  }
+  return apiFetch<Application>(`/applications/${id}`)
+}
+
+export async function getCoverLetter(applicationId: string): Promise<CoverLetter> {
+  if (isDemoMode()) {
+    const found = demoApplications.find((item) => item.id === applicationId)
+    return {
+      coverLetter: found?.cover_letter ?? null,
+      updatedAt: found?.cover_letter_updated_at ?? null,
+    }
+  }
+  return apiFetch<CoverLetter>(`/applications/${applicationId}/cover-letter`)
+}
+
+export async function saveCoverLetter(
+  applicationId: string,
+  coverLetter: string,
+): Promise<CoverLetter> {
+  if (isDemoMode()) {
+    const found = demoApplications.find((item) => item.id === applicationId)
+    const text = coverLetter.trim() || null
+    const updatedAt = text ? new Date().toISOString() : null
+    if (found) {
+      found.cover_letter = text
+      found.cover_letter_updated_at = updatedAt
+    }
+    return { coverLetter: text, updatedAt }
+  }
+  return apiFetch<CoverLetter>(`/applications/${applicationId}/cover-letter`, {
+    method: 'PUT',
+    body: JSON.stringify({ coverLetter }),
+  })
+}
+
+export async function draftCoverLetter(
+  applicationId: string,
+  options: { tone: CoverLetterTone; length: CoverLetterLength },
+): Promise<CoverLetter> {
+  if (isDemoMode()) {
+    throw new Error('Cover letters are drafted from your resume, so they need a signed-in account.')
+  }
+  return apiFetch<CoverLetter>(`/applications/${applicationId}/cover-letter/draft`, {
+    method: 'POST',
+    body: JSON.stringify(options),
+  })
+}
+
+export interface DownloadedFile {
+  blob: Blob
+  fileName: string
+}
+
+export async function downloadCoverLetter(
+  applicationId: string,
+  format: CoverLetterFormat,
+): Promise<DownloadedFile> {
+  if (isDemoMode()) {
+    throw new Error('Cover letter files need a signed-in account.')
+  }
+  const response = await apiRequest(
+    `/applications/${applicationId}/cover-letter/file?format=${format}`,
+    { method: 'POST' },
+  )
+  const disposition = response.headers.get('Content-Disposition') ?? ''
+  const encoded = disposition.match(/filename\*=UTF-8''([^;]+)/i)?.[1]
+  const plain = disposition.match(/filename="([^"]+)"/i)?.[1]
+  return {
+    blob: await response.blob(),
+    fileName: encoded ? decodeURIComponent(encoded) : (plain ?? `cover-letter.${format}`),
+  }
+}
+
+export const MAX_QUEUE = 20
+
+function demoQueue(): Application[] {
+  return demoApplications
+    .filter((item) => item.queue_position != null)
+    .sort((a, b) => (a.queue_position ?? 0) - (b.queue_position ?? 0))
+    .map((item) => ({ ...item }))
+}
+
+export async function getApplyQueue(): Promise<Application[]> {
+  if (isDemoMode()) return demoQueue()
+  return apiFetch<Application[]>('/applications/queue')
+}
+
+/** Replaces the queue with `ids`, in order. Only saved jobs on external forms are accepted. */
+export async function setApplyQueue(ids: string[]): Promise<Application[]> {
+  if (isDemoMode()) {
+    for (const item of demoApplications) {
+      const index = ids.indexOf(item.id)
+      item.queue_position = index >= 0 ? index + 1 : null
+      item.queued_at = index >= 0 ? (item.queued_at ?? new Date().toISOString()) : null
+    }
+    return demoQueue()
+  }
+  return apiFetch<Application[]>('/applications/queue', {
+    method: 'PUT',
+    body: JSON.stringify({ ids }),
+  })
+}
+
+export async function clearApplyQueue(): Promise<void> {
+  if (isDemoMode()) {
+    await setApplyQueue([])
+    return
+  }
+  await apiFetch<void>('/applications/queue', { method: 'DELETE' })
+}
+
+/** Scores, tailors and (optionally) drafts a cover letter for a job. Safe to call again. */
+export async function prepareApplication(
+  id: string,
+  options: { coverLetter: boolean },
+): Promise<PrepareResult> {
+  if (isDemoMode()) {
+    const found = demoApplications.find((item) => item.id === id)
+    if (!found) throw new Error('Application not found')
+    return { application: { ...found }, steps: { analyzed: false, tailored: false, coverLetter: false } }
+  }
+  return apiFetch<PrepareResult>(`/applications/${id}/prepare`, {
+    method: 'POST',
+    body: JSON.stringify(options),
   })
 }
 

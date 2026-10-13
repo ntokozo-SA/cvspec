@@ -8,14 +8,14 @@ import type {
   Comparison,
   Recommendation,
   ResumeSummary,
-  TailoredFile,
   TailoredScore,
   Tailoring,
 } from '../../shared/types'
 import type { JobBoardAdapter } from '../adapters'
+import { CoverLetterSection } from './CoverLetterSection'
+import { downloadFile } from './download'
 
 const SAVE_DELAY_MS = 600
-const DOCX_TYPE = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
 
 function ScoreRing({ score }: { score: number }): ReactElement {
   const clamped = Math.max(0, Math.min(100, Math.round(score)))
@@ -103,18 +103,6 @@ async function readLastResumeId(): Promise<string | null> {
   const result = await chrome.storage.local.get(LAST_RESUME_KEY)
   const value = result[LAST_RESUME_KEY]
   return typeof value === 'string' ? value : null
-}
-
-function downloadFile(file: TailoredFile): void {
-  const bytes = Uint8Array.from(atob(file.base64), (char) => char.charCodeAt(0))
-  const url = URL.createObjectURL(new Blob([bytes], { type: DOCX_TYPE }))
-  const link = document.createElement('a')
-  link.href = url
-  link.download = file.fileName
-  document.body.append(link)
-  link.click()
-  link.remove()
-  setTimeout(() => URL.revokeObjectURL(url), 10_000)
 }
 
 function unappliedNote(count: number): string | null {
@@ -396,7 +384,7 @@ export function TailorPanel({
       if (button) {
         button.click()
         setApplyNote(
-          'Opening the application form. On Greenhouse and Lever forms, click Fill in the CVSpec bar. On other sites, use Fill this application in the CVSpec extension menu.',
+          'Opening the application form. On Greenhouse, Lever and the application systems you have enabled (such as Workday), click Fill in the CVSpec bar. On other sites, use Fill this application in the CVSpec extension menu.',
         )
       } else {
         setApplyNote(
@@ -539,6 +527,11 @@ export function TailorPanel({
                     ))}
                   </div>
                 </section>
+
+                <CoverLetterSection
+                  application={application}
+                  onApplicationChange={onApplicationChange}
+                />
               </>
             ) : null}
           </>

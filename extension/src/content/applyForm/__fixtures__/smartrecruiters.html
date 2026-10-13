@@ -1,0 +1,97 @@
+<div id="st-apply">
+  <h1>Graduate Analyst - Standard Bank</h1>
+  <oc-oneclick-form>
+    <template data-shadow>
+      <form id="oc-form" novalidate>
+        <spl-input>
+          <template data-shadow>
+            <div class="field">
+              <label for="first-name-input">First name *</label>
+              <input id="first-name-input" type="text" required />
+            </div>
+          </template>
+        </spl-input>
+        <spl-input>
+          <template data-shadow>
+            <div class="field">
+              <label for="last-name-input">Last name *</label>
+              <input id="last-name-input" type="text" required />
+            </div>
+          </template>
+        </spl-input>
+        <spl-input>
+          <template data-shadow>
+            <div class="field">
+              <label for="email-input">Email *</label>
+              <input id="email-input" type="email" required />
+            </div>
+          </template>
+        </spl-input>
+        <spl-input>
+          <template data-shadow>
+            <div class="field">
+              <label for="confirm-email-input">Confirm your email *</label>
+              <input id="confirm-email-input" type="email" required />
+            </div>
+          </template>
+        </spl-input>
+        <spl-input>
+          <template data-shadow>
+            <div class="field">
+              <label for="location-input">City</label>
+              <input id="location-input" type="text" />
+            </div>
+          </template>
+        </spl-input>
+        <spl-input>
+          <template data-shadow>
+            <div class="field">
+              <label for="phone-number-input">Phone number</label>
+              <input id="phone-number-input" type="tel" />
+            </div>
+          </template>
+        </spl-input>
+        <spl-dropzone>
+          <template data-shadow>
+            <div class="field">
+              <label for="resume-upload">Resume *</label>
+              <input
+                id="resume-upload"
+                type="file"
+                data-test="resume-upload-input"
+                accept=".pdf,.doc,.docx,.rtf"
+              />
+            </div>
+          </template>
+        </spl-dropzone>
+        <spl-input>
+          <template data-shadow>
+            <div class="field">
+              <label for="linkedin-input">LinkedIn profile</label>
+              <input id="linkedin-input" type="url" />
+            </div>
+          </template>
+        </spl-input>
+        <div class="screening">
+          <div class="field">
+            <label for="q-motivation">Why do you want to work at Standard Bank? *</label>
+            <textarea id="q-motivation" required maxlength="1000"></textarea>
+          </div>
+          <div class="field">
+            <label for="q-matric">Do you have a matric certificate? *</label>
+            <select id="q-matric" required>
+              <option value="">Select</option>
+              <option value="y">Yes</option>
+              <option value="n">No</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="q-id">South African ID number *</label>
+            <input id="q-id" type="text" required />
+          </div>
+        </div>
+        <button type="submit">Submit</button>
+      </form>
+    </template>
+  </oc-oneclick-form>
+</div>

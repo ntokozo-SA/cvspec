@@ -1,9 +1,12 @@
-import { useCallback, useEffect, useState, type ReactElement } from 'react'
+import { useCallback, useEffect, useRef, useState, type ReactElement } from 'react'
 import { WEB_URL } from '../../shared/config'
 import { ExtensionError, sendMessage } from '../../shared/messages'
 import type { Application } from '../../shared/types'
+import { isQueueTab, QueueLine, useQueueStatus } from '../ui/QueueLine'
 import type { ApplyFormAdapter } from './adapters'
-import { fillForm, type FillReport } from './fill'
+import type { WizardStep } from './adapters/types'
+import { AnswersPanel } from './AnswersPanel'
+import { fillForm, markForCandidate, type FillReport } from './fill'
 
 export const SHOW_EVENT = 'cvspec:show-fill-bar'
 const FILLED_KEY = 'cvspec-filled-application'
@@ -11,6 +14,26 @@ const FILLED_KEY = 'cvspec-filled-application'
 const FILLED_TTL_MS = 3 * 60 * 60 * 1000
 const CONFIRMATION_POLL_MS = 1000
 const GENERIC_SUBMIT_DELAY_MS = 1500
+const PAGE_POLL_MS = 1000
+
+/** Where a multi-step or sign-in-gated form currently is. */
+interface PageView {
+  signIn: boolean
+  step: WizardStep | null
+}
+
+function readPage(adapter: ApplyFormAdapter): PageView {
+  return { signIn: adapter.isSignIn?.() ?? false, step: adapter.currentStep?.() ?? null }
+}
+
+function pageKey(view: PageView): string {
+  if (view.signIn) return 'sign-in'
+  return view.step ? `${view.step.index}/${view.step.total}:${view.step.name}` : ''
+}
+
+function stepLabel(step: WizardStep): string {
+  return `Step ${step.index} of ${step.total}${step.name ? `: ${step.name}` : ''}`
+}
 
 type BarState =
   | { kind: 'loading' }
@@ -81,6 +104,8 @@ function rankForPage(applications: Application[]): Application[] {
 function reportLines(report: FillReport): string[] {
   const lines: string[] = []
   if (report.fileName) lines.push(`Attached ${report.fileName}.`)
+  if (report.coverLetterFileName) lines.push(`Attached ${report.coverLetterFileName}.`)
+  if (report.coverLetterPasted) lines.push('Pasted your cover letter into the form.')
   if (report.filled.length > 0) {
     lines.push(`Filled ${report.filled.length} field${report.filled.length === 1 ? '' : 's'}.`)
   }
@@ -89,7 +114,12 @@ function reportLines(report: FillReport): string[] {
       `Kept ${report.kept.length} field${report.kept.length === 1 ? '' : 's'} that already had a value.`,
     )
   }
-  if (report.filled.length === 0 && !report.fileName) {
+  if (
+    report.filled.length === 0 &&
+    !report.fileName &&
+    !report.coverLetterFileName &&
+    !report.coverLetterPasted
+  ) {
     lines.push('Nothing could be filled automatically on this form.')
   }
   return lines
@@ -98,6 +128,14 @@ function reportLines(report: FillReport): string[] {
 export function FillBar({ adapter }: { adapter: ApplyFormAdapter }): ReactElement | null {
   const [state, setState] = useState<BarState>({ kind: 'loading' })
   const [dismissed, setDismissed] = useState(false)
+  const [fillCount, setFillCount] = useState(0)
+  const [view, setView] = useState<PageView>(() => readPage(adapter))
+  const viewKey = pageKey(view)
+  const previousViewKey = useRef(viewKey)
+  const tracksPages = adapter.isSignIn !== undefined || adapter.currentStep !== undefined
+  const queue = useQueueStatus()
+  const autoFilled = useRef<string | null>(null)
+  const recordedUrl = useRef(false)
 
   const markSubmitted = useCallback(async (applicationId: string) => {
     forgetFill()
@@ -162,6 +200,32 @@ export function FillBar({ adapter }: { adapter: ApplyFormAdapter }): ReactElemen
     return () => window.removeEventListener(SHOW_EVENT, show)
   }, [])
 
+  /** Wizards and sign-in pages change in place: watch for the next step or a finished sign-in. */
+  useEffect(() => {
+    if (!tracksPages) return
+    const timer = setInterval(() => {
+      const next = readPage(adapter)
+      setView((current) => (pageKey(current) === pageKey(next) ? current : next))
+    }, PAGE_POLL_MS)
+    return () => clearInterval(timer)
+  }, [adapter, tracksPages])
+
+  /** A new step gets a fresh offer to fill it. CVSpec never clicks Next itself. */
+  useEffect(() => {
+    if (previousViewKey.current === viewKey) return
+    previousViewKey.current = viewKey
+    const filled = recentFill()
+    if (filled && adapter.isConfirmation()) {
+      void markSubmitted(filled)
+      return
+    }
+    setState((current) =>
+      (current.kind === 'filled' || current.kind === 'error') && current.application
+        ? { kind: 'linked', application: current.application }
+        : current,
+    )
+  }, [viewKey, adapter, markSubmitted])
+
   /** After filling, watch for the confirmation view (and, on generic forms, the submit event). */
   useEffect(() => {
     if (state.kind !== 'filled') return
@@ -177,7 +241,8 @@ export function FillBar({ adapter }: { adapter: ApplyFormAdapter }): ReactElemen
       if (adapter.isConfirmation()) finish()
     }, CONFIRMATION_POLL_MS)
 
-    const form = adapter.form()
+    const root = adapter.form()
+    const form = root instanceof HTMLFormElement ? root : null
     let submitTimer: ReturnType<typeof setTimeout> | null = null
     const onSubmit = () => {
       if (adapter.system !== 'generic' || !form?.checkValidity()) return
@@ -196,14 +261,31 @@ export function FillBar({ adapter }: { adapter: ApplyFormAdapter }): ReactElemen
   const fill = async (application: Application) => {
     setState({ kind: 'filling', application })
     try {
+      if (adapter.isSignIn?.()) {
+        throw new Error('Sign in yourself first. CVSpec fills the form once you are signed in.')
+      }
       if (!adapter.isReady()) {
         throw new Error(
           "Couldn't find an application form on this page. Open the form, then click Fill again.",
         )
       }
       const pkg = await sendMessage({ type: 'GET_APPLY_PACKAGE', applicationId: application.id })
-      const report = await fillForm(adapter, pkg)
+      const letter = pkg.application.cover_letter?.trim()
+      const report = await fillForm(adapter, pkg, {
+        coverLetter: letter
+          ? {
+              text: letter,
+              fetchFile: (format) =>
+                sendMessage({
+                  type: 'GET_COVER_LETTER_FILE',
+                  applicationId: application.id,
+                  format,
+                }),
+            }
+          : null,
+      })
       rememberFill(application.id)
+      setFillCount((count) => count + 1)
       setState({ kind: 'filled', application: pkg.application, report })
     } catch (err) {
       setState({
@@ -227,7 +309,36 @@ export function FillBar({ adapter }: { adapter: ApplyFormAdapter }): ReactElemen
     }
   }
 
+  /** The first time a linked form loads, remember its URL so the queue can open it directly. */
+  const linkedApplication = state.kind === 'linked' ? state.application : null
+  useEffect(() => {
+    if (!linkedApplication || linkedApplication.apply_url || recordedUrl.current) return
+    recordedUrl.current = true
+    void sendMessage({
+      type: 'SET_APPLY_URL',
+      applicationId: linkedApplication.id,
+      url: window.location.href,
+    }).catch(() => undefined)
+  }, [linkedApplication])
+
+  /** On a tab the apply queue opened, fill each page or step once, then wait for the user. */
+  const [queueStatus] = queue
+  useEffect(() => {
+    if (!linkedApplication || view.signIn || !isQueueTab(queueStatus)) return
+    if (queueStatus?.phase !== 'active') return
+    if (queueStatus.current?.applicationId !== linkedApplication.id) return
+    const key = `${linkedApplication.id}|${window.location.href}|${viewKey}`
+    if (autoFilled.current === key) return
+    autoFilled.current = key
+    void fill(linkedApplication)
+  })
+
   if (dismissed || state.kind === 'loading') return null
+
+  const signingIn =
+    view.signIn && (state.kind === 'linked' || state.kind === 'pick' || state.kind === 'error')
+  const step = view.signIn ? null : view.step
+  const moreSteps = step !== null && step.index < step.total
 
   return (
     <div className="cvs-fill" role="region" aria-label="CVSpec application helper">
@@ -245,17 +356,41 @@ export function FillBar({ adapter }: { adapter: ApplyFormAdapter }): ReactElemen
             </>
           )}
 
-          {state.kind === 'linked' && (
+          {signingIn && (
+            <>
+              <strong>Sign in yourself to continue</strong>
+              <p className="cvs-muted">
+                CVSpec never signs in for you and never sees or stores your password. Once you are
+                signed in, it offers to fill each step of the application.
+              </p>
+            </>
+          )}
+
+          {!signingIn && state.kind === 'linked' && step && (
+            <>
+              <strong>
+                Fill {stepLabel(step)} for {jobLabel(state.application)}?
+              </strong>
+              <p className="cvs-muted">
+                CVSpec fills only this step: contact details, your tailored resume and draft
+                answers for you to edit. You review it and click Next yourself, then CVSpec offers
+                to fill the next step.
+              </p>
+            </>
+          )}
+
+          {!signingIn && state.kind === 'linked' && !step && (
             <>
               <strong>Fill this application for {jobLabel(state.application)}?</strong>
               <p className="cvs-muted">
-                CVSpec attaches your tailored resume and fills your contact details. You review and
+                CVSpec attaches your tailored resume and cover letter, fills your contact details
+                and drafts answers to the form&apos;s questions for you to edit. You review and
                 submit.
               </p>
             </>
           )}
 
-          {state.kind === 'pick' && (
+          {!signingIn && state.kind === 'pick' && (
             <>
               <strong>Which saved job is this application for?</strong>
               {state.options.length === 0 ? (
@@ -284,13 +419,17 @@ export function FillBar({ adapter }: { adapter: ApplyFormAdapter }): ReactElemen
           {state.kind === 'filling' && (
             <div className="cvs-loading cvs-fill__loading">
               <span className="cvs-spinner" aria-hidden />
-              Building your tailored resume and filling the form...
+              Building your tailored resume and cover letter, and filling the form...
             </div>
           )}
 
           {state.kind === 'filled' && (
             <>
-              <strong>Review the form, then submit it yourself</strong>
+              <strong>
+                {step && moreSteps
+                  ? `${stepLabel(step)} filled. Review it, then click Next yourself`
+                  : 'Review the form, then submit it yourself'}
+              </strong>
               {reportLines(state.report).map((line) => (
                 <p key={line} className="cvs-muted">
                   {line}
@@ -298,6 +437,9 @@ export function FillBar({ adapter }: { adapter: ApplyFormAdapter }): ReactElemen
               ))}
               {state.report.fileProblem && (
                 <div className="cvs-note">{state.report.fileProblem}</div>
+              )}
+              {state.report.coverLetterProblem && (
+                <div className="cvs-note">{state.report.coverLetterProblem}</div>
               )}
               {state.report.unappliedEdits > 0 && (
                 <div className="cvs-note">
@@ -312,6 +454,24 @@ export function FillBar({ adapter }: { adapter: ApplyFormAdapter }): ReactElemen
                   orange).
                 </div>
               )}
+              {state.report.sensitive > 0 && (
+                <div className="cvs-note cvs-note--sensitive">
+                  {state.report.sensitive} question{state.report.sensitive === 1 ? ' asks' : 's ask'}{' '}
+                  for ID, employment-equity, health or similar personal information (outlined in
+                  purple). Answer {state.report.sensitive === 1 ? 'it' : 'them'} yourself: CVSpec
+                  never reads or stores these.
+                </div>
+              )}
+              <AnswersPanel
+                key={`${state.application.id}-${fillCount}`}
+                adapter={adapter}
+                applicationId={state.application.id}
+                onFilled={(result) => {
+                  const report = { ...state.report, answered: result.answered.length }
+                  markForCandidate(adapter, report)
+                  setState({ ...state, report })
+                }}
+              />
             </>
           )}
 
@@ -322,7 +482,9 @@ export function FillBar({ adapter }: { adapter: ApplyFormAdapter }): ReactElemen
             </>
           )}
 
-          {state.kind === 'error' && <div className="cvs-error">{state.message}</div>}
+          {!signingIn && state.kind === 'error' && (
+            <div className="cvs-error">{state.message}</div>
+          )}
         </div>
         <button
           type="button"
@@ -336,6 +498,8 @@ export function FillBar({ adapter }: { adapter: ApplyFormAdapter }): ReactElemen
         </button>
       </div>
 
+      <QueueLine queue={queue} />
+
       <div className="cvs-fill__actions">
         {state.kind === 'disconnected' && (
           <a
@@ -348,7 +512,7 @@ export function FillBar({ adapter }: { adapter: ApplyFormAdapter }): ReactElemen
           </a>
         )}
 
-        {state.kind === 'linked' && (
+        {!signingIn && state.kind === 'linked' && (
           <>
             <button type="button" className="cvs-link" onClick={() => void loadPicker()}>
               Not this job
@@ -358,12 +522,12 @@ export function FillBar({ adapter }: { adapter: ApplyFormAdapter }): ReactElemen
               className="cvs-btn cvs-btn--primary"
               onClick={() => void fill(state.application)}
             >
-              Fill
+              {step ? 'Fill this step' : 'Fill'}
             </button>
           </>
         )}
 
-        {state.kind === 'pick' && state.options.length > 0 && (
+        {!signingIn && state.kind === 'pick' && state.options.length > 0 && (
           <button
             type="button"
             className="cvs-btn cvs-btn--primary"
@@ -394,7 +558,7 @@ export function FillBar({ adapter }: { adapter: ApplyFormAdapter }): ReactElemen
           </>
         )}
 
-        {state.kind === 'error' && (
+        {!signingIn && state.kind === 'error' && (
           <button
             type="button"
             className="cvs-btn cvs-btn--secondary"

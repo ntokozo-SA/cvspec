@@ -1,0 +1,80 @@
+<header>
+  <form id="site-search" action="/search"><input type="search" name="q" aria-label="Search vacancies" /></form>
+</header>
+<main>
+  <h1>Apply: Graduate Accountant, Johannesburg</h1>
+  <form id="vacancy-apply" action="/vacancies/88/apply" method="post">
+    <label for="fn">First name *</label>
+    <input id="fn" name="first" required />
+    <label for="sn">Surname *</label>
+    <input id="sn" name="surname" required />
+    <label for="em">Email *</label>
+    <input id="em" type="email" name="email" required />
+    <label for="cell">Cell number *</label>
+    <input id="cell" name="cell" required />
+
+    <label for="idno">SA ID number *</label>
+    <input id="idno" name="id_number" required />
+
+    <label for="group">Group</label>
+    <select id="group" name="eq_group">
+      <option value="">-- Select --</option>
+      <option>African</option>
+      <option>Coloured</option>
+      <option>Indian</option>
+      <option>White</option>
+    </select>
+
+    <div class="question">
+      <span class="question-label">Gender *</span>
+      <label><input type="radio" name="gender" value="m" required /> Male</label>
+      <label><input type="radio" name="gender" value="f" required /> Female</label>
+    </div>
+
+    <div class="question">
+      <span class="question-label">Do you have a disability?</span>
+      <label><input type="radio" name="disabled" value="y" /> Yes</label>
+      <label><input type="radio" name="disabled" value="n" /> No</label>
+    </div>
+
+    <label for="crim">Criminal record</label>
+    <select id="crim" name="criminal">
+      <option value="">-- Select --</option>
+      <option>None</option>
+      <option>Yes</option>
+    </select>
+
+    <label for="why">Motivation: why should we hire you? *</label>
+    <textarea id="why" name="motivation" required></textarea>
+
+    <label for="sal">Expected salary *</label>
+    <input id="sal" name="expected_salary" required />
+
+    <label for="notice">Notice period</label>
+    <select id="notice" name="notice">
+      <option value="">-- Select --</option>
+      <option>Immediately available</option>
+      <option>1 month</option>
+      <option>2 months</option>
+    </select>
+
+    <label><input type="checkbox" name="relocate" /> Willing to relocate</label>
+
+    <div class="question">
+      <span class="question-label">Languages spoken</span>
+      <label><input type="checkbox" name="lang" value="en" /> English</label>
+      <label><input type="checkbox" name="lang" value="af" /> Afrikaans</label>
+      <label><input type="checkbox" name="lang" value="zu" /> isiZulu</label>
+    </div>
+
+    <label for="ref">Referee name and phone number</label>
+    <input id="ref" name="referee" />
+
+    <label for="cvfile">Upload CV</label>
+    <input id="cvfile" type="file" />
+
+    <label><input type="checkbox" name="popia" required /> I consent to the processing of my personal information (POPIA)</label>
+
+    <button type="submit">Submit application</button>
+  </form>
+</main>

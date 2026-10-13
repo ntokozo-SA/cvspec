@@ -9,6 +9,8 @@ import { ResumesPage } from './pages/ResumesPage'
 import { JobSpecsPage } from './pages/JobSpecsPage'
 import { ComparePage } from './pages/ComparePage'
 import { ApplicationsPage } from './pages/ApplicationsPage'
+import { ApplicationDetailPage } from './pages/ApplicationDetailPage'
+import { ApplyQueuePage } from './pages/ApplyQueuePage'
 import { ComparisonDetailPage, HistoryPage } from './pages/HistoryPage'
 import { PrivacyPage } from './pages/PrivacyPage'
 import { ProfilePage } from './pages/ProfilePage'
@@ -29,6 +31,8 @@ export default function App(): ReactElement {
               <Route path="job-specs" element={<JobSpecsPage />} />
               <Route path="compare" element={<ComparePage />} />
               <Route path="applications" element={<ApplicationsPage />} />
+              <Route path="applications/:id" element={<ApplicationDetailPage />} />
+              <Route path="queue" element={<ApplyQueuePage />} />
               <Route path="history" element={<HistoryPage />} />
               <Route path="history/:id" element={<ComparisonDetailPage />} />
               <Route path="profile" element={<ProfilePage />} />

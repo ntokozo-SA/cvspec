@@ -1,7 +1,14 @@
 import { useCallback, useEffect, useMemo, useState, type ReactElement } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { Button, EmptyState } from '../components/Layout'
-import { deleteApplication, listApplications, updateApplication } from '../lib/api'
+import {
+  MAX_QUEUE,
+  deleteApplication,
+  getApplyQueue,
+  listApplications,
+  setApplyQueue,
+  updateApplication,
+} from '../lib/api'
 import { getExtensionStatus, subscribeExtensionStatus } from '../lib/extensionBridge'
 import type { Application, ApplicationStatus, JobBoard } from '../types'
 
@@ -36,6 +43,10 @@ const BOARD_LABELS: Record<JobBoard, string> = {
   fiverr: 'Fiverr',
   idealist: 'Idealist',
   peoplecurated: 'People Curated',
+  pnet: 'PNet',
+  careers24: 'Careers24',
+  careerjunction: 'CareerJunction',
+  offerzen: 'OfferZen',
   other: 'Other site',
 }
 
@@ -53,6 +64,9 @@ export function ApplicationsPage(): ReactElement {
   const [busyId, setBusyId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [extension, setExtension] = useState(getExtensionStatus)
+  const [selected, setSelected] = useState<Set<string>>(() => new Set())
+  const [queueing, setQueueing] = useState(false)
+  const navigate = useNavigate()
 
   useEffect(() => subscribeExtensionStatus(setExtension), [])
 
@@ -95,6 +109,42 @@ export function ApplicationsPage(): ReactElement {
   }, [items])
 
   const visible = items.filter((item) => item.status === tab)
+  const queueable = (item: Application): boolean =>
+    item.status === 'saved' && !item.built_in_apply && item.queue_position == null
+
+  const toggleSelected = (id: string): void => {
+    setSelected((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const addToQueue = async (): Promise<void> => {
+    setQueueing(true)
+    setError(null)
+    try {
+      const current = (await getApplyQueue()).map((item) => item.id)
+      const additions = items
+        .filter((item) => selected.has(item.id) && queueable(item))
+        .map((item) => item.id)
+        .filter((id) => !current.includes(id))
+      const ids = [...current, ...additions]
+      if (ids.length > MAX_QUEUE) {
+        throw new Error(
+          `The apply queue holds up to ${MAX_QUEUE} jobs. It has ${current.length}; pick ${Math.max(0, MAX_QUEUE - current.length)} or fewer.`,
+        )
+      }
+      await setApplyQueue(ids)
+      setSelected(new Set())
+      navigate('/app/queue')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not add jobs to the apply queue')
+    } finally {
+      setQueueing(false)
+    }
+  }
 
   const changeStatus = async (id: string, status: ApplicationStatus): Promise<void> => {
     setBusyId(id)
@@ -178,19 +228,60 @@ export function ApplicationsPage(): ReactElement {
         />
       ) : (
         <div className="stack">
+          {tab === 'saved' && (
+            <div className="queue-toolbar">
+              <span className="muted" style={{ marginRight: 'auto' }}>
+                Tick jobs to fill one after another with the apply queue.
+              </span>
+              <Button
+                size="sm"
+                disabled={queueing || selected.size === 0}
+                onClick={() => void addToQueue()}
+              >
+                {queueing
+                  ? 'Adding...'
+                  : `Add to apply queue${selected.size > 0 ? ` (${selected.size})` : ''}`}
+              </Button>
+              <Link className="btn btn-ghost btn-sm" to="/app/queue">
+                View queue
+              </Link>
+            </div>
+          )}
           {visible.map((item) => (
             <div key={item.id} className="list-row application-row">
+              {tab === 'saved' && (
+                <input
+                  type="checkbox"
+                  className="application-row__select"
+                  aria-label={`Add ${item.title ?? 'job'} to the apply queue`}
+                  title={
+                    item.built_in_apply
+                      ? "Uses the board's own application form; apply on the board yourself"
+                      : item.queue_position != null
+                        ? `Already in the apply queue (#${item.queue_position})`
+                        : undefined
+                  }
+                  disabled={!queueable(item)}
+                  checked={selected.has(item.id) || item.queue_position != null}
+                  onChange={() => toggleSelected(item.id)}
+                />
+              )}
               <div className="list-row__meta">
                 <div className="list-row__title">
-                  <a href={item.source_url} target="_blank" rel="noopener noreferrer">
+                  <Link to={`/app/applications/${item.id}`}>
                     {item.title ?? item.job_spec?.parsed_json?.title ?? 'Untitled role'}
-                  </a>
+                  </Link>
                 </div>
                 <div className="list-row__sub">
                   {[item.company, item.location, BOARD_LABELS[item.board]]
                     .filter(Boolean)
                     .join(' · ')}{' '}
-                  · Saved {new Date(item.created_at).toLocaleDateString()}
+                  · Saved {new Date(item.created_at).toLocaleDateString()} ·{' '}
+                  <a href={item.source_url} target="_blank" rel="noopener noreferrer">
+                    Posting
+                  </a>
+                  {item.built_in_apply && " · Board's own form, apply there yourself"}
+                  {item.queue_position != null && ` · In apply queue (#${item.queue_position})`}
                 </div>
               </div>
 

@@ -5,6 +5,7 @@ type WebMessage =
   | { source: 'cvspec-web'; type: 'ping' }
   | { source: 'cvspec-web'; type: 'handoff'; tokenHash: string }
   | { source: 'cvspec-web'; type: 'signout' }
+  | { source: 'cvspec-web'; type: 'start-queue' }
 
 function postToPage(message: Record<string, unknown>): void {
   window.postMessage({ source: 'cvspec-ext', ...message }, window.location.origin)
@@ -46,6 +47,16 @@ window.addEventListener('message', (event: MessageEvent) => {
     )
   } else if (data.type === 'signout') {
     void sendMessage({ type: 'SIGNOUT' }).catch(() => undefined)
+  } else if (data.type === 'start-queue') {
+    sendMessage({ type: 'QUEUE_OPEN' }).then(
+      () => postToPage({ type: 'queue-opened', ok: true }),
+      (err: unknown) =>
+        postToPage({
+          type: 'queue-opened',
+          ok: false,
+          error: err instanceof Error ? err.message : 'Could not open the queue',
+        }),
+    )
   }
 })
 

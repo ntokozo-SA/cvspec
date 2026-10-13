@@ -1,0 +1,98 @@
+<div id="app">
+  <h1>Data Analyst</h1>
+  <form id="application-form" class="application--form" action="/acme/jobs/456/applications" method="post">
+    <div class="field-wrapper">
+      <label for="first_name">First Name<span>*</span></label>
+      <input id="first_name" type="text" aria-required="true" required />
+    </div>
+    <div class="field-wrapper">
+      <label for="last_name">Last Name<span>*</span></label>
+      <input id="last_name" type="text" aria-required="true" required />
+    </div>
+    <div class="field-wrapper">
+      <label for="email">Email<span>*</span></label>
+      <input id="email" type="text" aria-required="true" required />
+    </div>
+    <div class="field-wrapper">
+      <label for="phone">Phone</label>
+      <input id="phone" type="tel" />
+    </div>
+    <div class="file-upload">
+      <div id="upload-label-resume">Resume/CV<span>*</span></div>
+      <input id="resume" type="file" accept=".pdf,.docx" aria-labelledby="upload-label-resume" required style="display: none" />
+    </div>
+    <div class="file-upload">
+      <div id="upload-label-cover_letter">Cover Letter</div>
+      <input id="cover_letter" type="file" aria-labelledby="upload-label-cover_letter" style="display: none" />
+    </div>
+
+    <div class="field-wrapper">
+      <label for="question_10">Why do you want to work at Acme?<span>*</span></label>
+      <textarea id="question_10" required maxlength="1000"></textarea>
+    </div>
+    <div class="field-wrapper">
+      <label for="question_11">What are your salary expectations (CTC per month)?<span>*</span></label>
+      <input id="question_11" type="text" required />
+    </div>
+    <div class="field-wrapper">
+      <label for="question_12">What is your notice period?</label>
+      <select id="question_12">
+        <option value="">Please select</option>
+        <option value="a">Immediately</option>
+        <option value="b">1 month</option>
+        <option value="c">2 months</option>
+        <option value="d">3 months</option>
+      </select>
+    </div>
+    <fieldset class="field-wrapper">
+      <legend>Are you willing to relocate to Johannesburg?<span>*</span></legend>
+      <label><input type="radio" name="question_13" value="1" required /> Yes</label>
+      <label><input type="radio" name="question_13" value="0" required /> No</label>
+    </fieldset>
+    <div class="field-wrapper">
+      <label for="question_14">How did you hear about this job?</label>
+      <input id="question_14" type="text" />
+    </div>
+    <div class="field-wrapper">
+      <label for="question_15">ID Number<span>*</span></label>
+      <input id="question_15" type="text" required />
+    </div>
+    <fieldset class="field-wrapper">
+      <legend>Do you have a criminal record?<span>*</span></legend>
+      <label><input type="radio" name="question_16" value="1" required /> Yes</label>
+      <label><input type="radio" name="question_16" value="0" required /> No</label>
+    </fieldset>
+
+    <div id="eeoc_fields">
+      <h3>Voluntary Self-Identification</h3>
+      <div class="field-wrapper">
+        <label for="job_application_gender">Gender</label>
+        <select id="job_application_gender">
+          <option value="">Please select</option>
+          <option value="1">Male</option>
+          <option value="2">Female</option>
+          <option value="3">Decline to self-identify</option>
+        </select>
+      </div>
+      <div class="field-wrapper">
+        <label for="job_application_race">Race</label>
+        <select id="job_application_race">
+          <option value="">Please select</option>
+          <option value="1">Black or African American</option>
+          <option value="2">White</option>
+        </select>
+      </div>
+      <div class="field-wrapper">
+        <label for="job_application_disability_status">Disability Status</label>
+        <select id="job_application_disability_status">
+          <option value="">Please select</option>
+          <option value="1">Yes, I have a disability</option>
+          <option value="2">No, I don't have a disability</option>
+        </select>
+      </div>
+    </div>
+
+    <label><input type="checkbox" name="consent" required /> I confirm the information in this application is correct</label>
+    <button type="submit">Submit application</button>
+  </form>
+</div>

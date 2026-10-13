@@ -1,0 +1,45 @@
+<div class="application-page">
+  <h2>Submit your application</h2>
+  <form id="application-form" action="/acme/def-456/apply" method="POST" enctype="multipart/form-data">
+    <ul>
+      <li class="application-question resume">
+        <label>
+          <div class="application-label">Resume/CV <span class="required">✱</span></div>
+          <div class="application-field">
+            <a class="visible-resume-upload">ATTACH RESUME/CV</a>
+            <input id="resume-upload-input" type="file" name="resume" style="display: none" />
+          </div>
+        </label>
+      </li>
+      <li class="application-question">
+        <label>
+          <div class="application-label">Full name <span class="required">✱</span></div>
+          <div class="application-field"><input type="text" name="name" required /></div>
+        </label>
+      </li>
+      <li class="application-question">
+        <label>
+          <div class="application-label">Email <span class="required">✱</span></div>
+          <div class="application-field"><input type="email" name="email" required /></div>
+        </label>
+      </li>
+      <li class="application-question">
+        <label>
+          <div class="application-label">Why do you want to join Acme?</div>
+          <div class="application-field">
+            <textarea name="cards[abc][field0]"></textarea>
+          </div>
+        </label>
+      </li>
+    </ul>
+    <div class="application-additional">
+      <h4>Additional information</h4>
+      <textarea
+        name="comments"
+        id="additional-information"
+        placeholder="Add a cover letter or anything else you want to share."
+      ></textarea>
+    </div>
+    <button type="submit">Submit application</button>
+  </form>
+</div>

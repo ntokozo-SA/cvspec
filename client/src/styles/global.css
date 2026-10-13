@@ -410,6 +410,50 @@ p {
   gap: 1rem;
 }
 
+.saved-answers {
+  margin-top: 1.5rem;
+}
+
+.saved-answers h2 {
+  margin: 0 0 0.35rem;
+  font-size: 1.1rem;
+}
+
+.saved-answers__add {
+  margin: 0.5rem 0 0;
+  font-size: 0.95rem;
+}
+
+.saved-answer {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid var(--line);
+}
+
+.saved-answer__question {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+
+.saved-answer__head {
+  display: grid;
+  grid-template-columns: 1fr minmax(9rem, 13rem);
+  gap: 0.5rem;
+}
+
+.saved-answer .textarea {
+  min-height: 70px;
+}
+
+.saved-answer__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
 .form-error {
   padding: 0.75rem 0.9rem;
   border: 1px solid #e2b4b4;
@@ -1900,6 +1944,40 @@ p {
   font-size: 0.9rem;
 }
 
+.application-row__select {
+  width: 1.1rem;
+  height: 1.1rem;
+  margin-right: 0.75rem;
+  flex-shrink: 0;
+  accent-color: var(--forest);
+}
+
+.queue-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 1rem;
+}
+
+.queue-toolbar .checkbox-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-right: auto;
+  font-size: 0.9rem;
+}
+
+.queue-list {
+  padding: 0;
+  list-style: none;
+}
+
+.muted {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
 .ext-chip {
   display: inline-flex;
   align-items: center;
@@ -2154,9 +2232,32 @@ p {
   cursor: pointer;
 }
 
-.rec-item--selectable.is-selected {
+.rec-item--selectable.is-selected,
+.rec-item.is-selected {
   border-color: var(--forest);
   background: var(--forest-soft);
+}
+
+.cover-letter__controls,
+.cover-letter__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.75rem;
+}
+
+.field-inline {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+
+.cover-letter__text {
+  min-height: 22rem;
+  line-height: 1.55;
 }
 
 .rec-actions {

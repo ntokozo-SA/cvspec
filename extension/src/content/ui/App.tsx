@@ -5,6 +5,7 @@ import { ExtensionError, sendMessage } from '../../shared/messages'
 import type { Application, AuthState } from '../../shared/types'
 import type { JobBoardAdapter } from '../adapters'
 import { ActionBar, type SaveState } from './ActionBar'
+import { QueueLine, useQueueStatus } from './QueueLine'
 import { TailorPanel } from './TailorPanel'
 
 export function App({
@@ -72,7 +73,11 @@ export function App({
       setSaveState('syncing')
       setNotice(null)
       try {
-        const saved = await sendMessage({ type: 'SAVE_JOB', job, analyze })
+        const saved = await sendMessage({
+          type: 'SAVE_JOB',
+          job: { ...job, builtInApply: adapter.isBuiltInApply() },
+          analyze,
+        })
         setApplication(saved)
         setSaveState('saved')
         return saved
@@ -101,6 +106,9 @@ export function App({
     void save(true)
   }, [auth, save, saveState])
 
+  const queue = useQueueStatus()
+  const builtInApply = useCallback(() => adapter.isBuiltInApply(), [adapter])
+
   const onTailor = useCallback(async () => {
     if (auth && !auth.connected) {
       setPanelOpen(true)
@@ -113,13 +121,16 @@ export function App({
   return (
     <>
       {createPortal(
-        <ActionBar
-          saveState={saveState}
-          notice={notice}
-          onSave={onSave}
-          onTailor={() => void onTailor()}
-          onDismissNotice={() => setNotice(null)}
-        />,
+        <>
+          <ActionBar
+            saveState={saveState}
+            notice={notice}
+            onSave={onSave}
+            onTailor={() => void onTailor()}
+            onDismissNotice={() => setNotice(null)}
+          />
+          <QueueLine queue={queue} builtInApply={builtInApply} />
+        </>,
         barContainer,
       )}
       <TailorPanel

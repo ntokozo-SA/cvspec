@@ -12,6 +12,10 @@ export interface ExtensionStatus {
 type ExtensionMessage =
   | { source: 'cvspec-ext'; type: 'ready'; connected: boolean; email?: string }
   | { source: 'cvspec-ext'; type: 'handoff-result'; ok: boolean; email?: string; error?: string }
+  | { source: 'cvspec-ext'; type: 'queue-opened'; ok: boolean; error?: string }
+
+const QUEUE_OPEN_TIMEOUT_MS = 5000
+let queueOpened: ((result: { ok: boolean; error?: string }) => void) | null = null
 
 let status: ExtensionStatus = { installed: false, connected: false }
 let currentSession: Session | null = null
@@ -72,6 +76,12 @@ function onMessage(event: MessageEvent): void {
     return
   }
 
+  if (data.type === 'queue-opened') {
+    queueOpened?.({ ok: data.ok, error: data.error })
+    queueOpened = null
+    return
+  }
+
   clearHandoffTimer()
   if (data.ok) {
     setStatus({ installed: true, connected: true, email: data.email })
@@ -96,6 +106,25 @@ export function signOutExtension(): void {
   clearHandoffTimer()
   post({ type: 'signout' })
   if (status.installed) setStatus({ installed: true, connected: false })
+}
+
+/** Opens the extension's queue page, where the user starts the queue. */
+export function startQueueInExtension(): Promise<void> {
+  if (!status.installed) {
+    return Promise.reject(new Error('Install the CVSpec Chrome extension to run the apply queue.'))
+  }
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      queueOpened = null
+      reject(new Error('The CVSpec extension did not respond. Reload the page and try again.'))
+    }, QUEUE_OPEN_TIMEOUT_MS)
+    queueOpened = (result) => {
+      clearTimeout(timer)
+      if (result.ok) resolve()
+      else reject(new Error(result.error ?? 'Could not open the queue in the extension'))
+    }
+    post({ type: 'start-queue' })
+  })
 }
 
 export function getExtensionStatus(): ExtensionStatus {

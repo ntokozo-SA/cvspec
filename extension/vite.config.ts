@@ -5,6 +5,12 @@ import manifest from './manifest.config.ts'
 
 export default defineConfig({
   plugins: [react(), crx({ manifest })],
+  build: {
+    rollupOptions: {
+      // Extension pages the manifest doesn't reference, opened with chrome.runtime.getURL.
+      input: { queue: 'src/queue/index.html' },
+    },
+  },
   server: {
     port: 5174,
     strictPort: true,

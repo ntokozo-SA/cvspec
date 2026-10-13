@@ -92,6 +92,10 @@ export type JobBoard =
   | 'fiverr'
   | 'idealist'
   | 'peoplecurated'
+  | 'pnet'
+  | 'careers24'
+  | 'careerjunction'
+  | 'offerzen'
   | 'other'
 
 export interface Application {
@@ -110,6 +114,15 @@ export interface Application {
   created_at: string
   tailored_comparison_id: string | null
   tailored_recommendations: number[] | null
+  cover_letter?: string | null
+  cover_letter_updated_at?: string | null
+  /** 1-based place in the apply queue, or null when not queued. */
+  queue_position?: number | null
+  queued_at?: string | null
+  /** The application form URL, recorded when the extension first fills it. */
+  apply_url?: string | null
+  /** The board's own form (Easy Apply, Indeed Apply) is used; CVSpec never fills it. */
+  built_in_apply?: boolean | null
   job_spec?: Pick<JobSpec, 'id' | 'source_url' | 'parsed_json' | 'created_at'> | null
   comparison?: Pick<
     Comparison,
@@ -121,6 +134,17 @@ export interface Application {
     | 'resume_id'
     | 'created_at'
   > | null
+}
+
+export interface PrepareSteps {
+  analyzed: boolean
+  tailored: boolean
+  coverLetter: boolean
+}
+
+export interface PrepareResult {
+  application: Application
+  steps: PrepareSteps
 }
 
 export interface ApplicantProfile {
@@ -137,6 +161,43 @@ export interface ApplicantProfile {
 }
 
 export type ApplicantProfileInput = Omit<ApplicantProfile, 'updatedAt' | 'saved'>
+
+export type AnswerCategory =
+  | 'salary'
+  | 'notice_period'
+  | 'start_date'
+  | 'relocation'
+  | 'work_authorization'
+  | 'motivation'
+  | 'referral_source'
+  | 'other'
+
+export interface SavedAnswer {
+  id: string
+  category: AnswerCategory
+  question: string
+  answer: string
+  updatedAt: string
+}
+
+export type SavedAnswerInput = Pick<SavedAnswer, 'category' | 'question' | 'answer'>
+
+export interface ApplicationAnswer {
+  questionKey: string
+  questionLabel: string
+  answer: string
+  source: 'bank' | 'ai' | 'user'
+  updatedAt: string
+}
+
+export type CoverLetterTone = 'professional' | 'warm' | 'concise'
+export type CoverLetterLength = 'short' | 'medium' | 'long'
+export type CoverLetterFormat = 'docx' | 'pdf'
+
+export interface CoverLetter {
+  coverLetter: string | null
+  updatedAt: string | null
+}
 
 export interface ApiErrorBody {
   error: string

@@ -1,0 +1,63 @@
+@import '../popup/popup.css';
+
+body {
+  width: auto;
+}
+
+.options {
+  display: grid;
+  gap: 14px;
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 24px 16px 40px;
+}
+
+.options__head {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.options__head h1 {
+  margin: 0 0 4px;
+  font-size: 20px;
+}
+
+.sites {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.site {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  border-top: 1px solid var(--line);
+}
+
+.site__meta {
+  display: grid;
+  gap: 2px;
+}
+
+.switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-soft);
+  cursor: pointer;
+}
+
+.switch input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--forest);
+  cursor: pointer;
+}

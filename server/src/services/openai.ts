@@ -1,6 +1,11 @@
-import OpenAI from 'openai'
 import { z } from 'zod'
-import type { JobSpecParsed, Recommendation, ResumeParsed } from '../types/index.js'
+import { aiModel, getClient } from './aiClient.js'
+import type {
+  JobSpecParsed,
+  QuestionInput,
+  Recommendation,
+  ResumeParsed,
+} from '../types/index.js'
 
 /** Accepts 3, "3", "3+ years" or "3-5 years" (lower bound); anything else becomes undefined. */
 const lenientYears = z.preprocess((value) => {
@@ -48,12 +53,6 @@ const skillMatchSchema = z.object({
   required: z.array(skillVerdictSchema).default([]),
   preferred: z.array(skillVerdictSchema).default([]),
 })
-
-function getClient(): OpenAI {
-  const key = process.env.OPENAI_API_KEY
-  if (!key) throw new Error('OPENAI_API_KEY is not configured')
-  return new OpenAI({ apiKey: key })
-}
 
 export async function extractJobSpec(rawText: string): Promise<JobSpecParsed> {
   const client = getClient()
@@ -152,4 +151,132 @@ export async function generateRecommendations(input: {
   const content = completion.choices[0]?.message?.content
   if (!content) throw new Error('OpenAI returned an empty recommendations response')
   return recommendationsSchema.parse(JSON.parse(content)).recommendations
+}
+
+/** What the AI may draw on when writing for a candidate. Nothing sensitive goes in here. */
+export interface CandidateContext {
+  company: string | null
+  jobTitle: string | null
+  jobDescription: string
+  job: JobSpecParsed | null
+  resume: ResumeParsed | null
+  profile: { firstName: string | null; lastName: string | null; location: string | null }
+  savedAnswers: Array<{ category: string; question: string; answer: string }>
+  /** Resume edits the candidate chose for this job. */
+  tailoredEdits: string[]
+}
+
+const draftedAnswersSchema = z.object({
+  answers: z
+    .array(
+      z.object({
+        key: z.string(),
+        answer: z
+          .string()
+          .nullish()
+          .transform((value) => value ?? ''),
+        needsUserInput: z.boolean().optional(),
+      }),
+    )
+    .default([]),
+})
+
+function contextPayload(context: CandidateContext) {
+  return {
+    company: context.company,
+    jobTitle: context.jobTitle,
+    job: context.job,
+    jobDescription: context.jobDescription.slice(0, 8000),
+    resume: context.resume,
+    candidate: context.profile,
+    savedAnswers: context.savedAnswers,
+    tailoredEdits: context.tailoredEdits,
+  }
+}
+
+export async function draftAnswerTexts(
+  context: CandidateContext,
+  questions: QuestionInput[],
+): Promise<Array<{ key: string; answer: string; needsUserInput?: boolean }>> {
+  const client = getClient()
+  const completion = await client.chat.completions.create({
+    model: aiModel(),
+    temperature: 0.4,
+    response_format: { type: 'json_object' },
+    messages: [
+      {
+        role: 'system',
+        content: [
+          'You draft answers to job application questions for a candidate. The candidate reviews and edits every answer before it is used.',
+          'Return JSON: { "answers": [{ "key": string, "answer": string, "needsUserInput": boolean }] } with one entry per question, using the question keys given.',
+          'Use only facts from the resume, candidate details, saved answers, chosen resume edits and the job posting. Never invent dates, salaries, notice periods, qualifications, licences, employers, numbers or personal circumstances.',
+          'If a question depends on a fact you do not have, return an empty answer with needsUserInput true.',
+          'For questions with options, the answer must be copied exactly from the options. For checkbox questions with several options, separate chosen options with "; ".',
+          'Respect maxLength (characters) when given. Otherwise: one sentence for text questions, 80 to 150 words for textarea questions.',
+          'For motivation questions, refer to the company and role specifically and connect them to real experience from the resume.',
+          'Write in the first person, in plain professional English, without cliches or emojis.',
+        ].join(' '),
+      },
+      {
+        role: 'user',
+        content: JSON.stringify({
+          ...contextPayload(context),
+          questions: questions.map(({ key, label, kind, options, maxLength, category }) => ({
+            key,
+            label,
+            kind,
+            options,
+            maxLength,
+            category,
+          })),
+        }),
+      },
+    ],
+  })
+
+  const content = completion.choices[0]?.message?.content
+  if (!content) throw new Error('OpenAI returned an empty answers response')
+  return draftedAnswersSchema.parse(JSON.parse(content)).answers
+}
+
+export type CoverLetterTone = 'professional' | 'warm' | 'concise'
+export type CoverLetterLength = 'short' | 'medium' | 'long'
+
+const LETTER_WORDS: Record<CoverLetterLength, string> = {
+  short: '150 to 200',
+  medium: '250 to 320',
+  long: '350 to 450',
+}
+
+const coverLetterSchema = z.object({ coverLetter: z.string().min(1) })
+
+export async function draftCoverLetter(
+  context: CandidateContext,
+  options: { tone: CoverLetterTone; length: CoverLetterLength },
+): Promise<string> {
+  const client = getClient()
+  const completion = await client.chat.completions.create({
+    model: aiModel(),
+    temperature: 0.5,
+    response_format: { type: 'json_object' },
+    messages: [
+      {
+        role: 'system',
+        content: [
+          'You write a tailored cover letter for a job application. The candidate edits it before sending.',
+          'Return JSON: { "coverLetter": string }. Paragraphs are separated by a blank line.',
+          'Start with a greeting to the hiring team (use the company name if known, never invent a person\'s name) and end with "Kind regards," followed by the candidate\'s name on the next line.',
+          'Do not include an address block, date or contact details; those are added separately.',
+          `Length: ${LETTER_WORDS[options.length]} words. Tone: ${options.tone}.`,
+          'Connect two or three of the job\'s most important requirements to specific, real experience from the resume and the chosen resume edits. Mention the role and company specifically.',
+          'Use only facts from the inputs. Never invent employers, metrics, dates, qualifications or reasons. No cliches, no emojis, no placeholders in square brackets.',
+        ].join(' '),
+      },
+      { role: 'user', content: JSON.stringify(contextPayload(context)) },
+    ],
+  })
+
+  const content = completion.choices[0]?.message?.content
+  if (!content) throw new Error('OpenAI returned an empty cover letter')
+  return coverLetterSchema.parse(JSON.parse(content)).coverLetter.trim().slice(0, 8000)
 }

@@ -8,6 +8,9 @@ import { comparisonsRouter } from './routes/comparisons.js'
 import { applicationsRouter } from './routes/applications.js'
 import { extensionRouter } from './routes/extension.js'
 import { profileRouter } from './routes/profile.js'
+import { answersRouter } from './routes/answers.js'
+import { coverLetterRouter } from './routes/coverLetter.js'
+import { prepareRouter, queueRouter } from './routes/queue.js'
 import { requireAuth } from './middleware/auth.js'
 
 const app = express()
@@ -29,6 +32,10 @@ app.get('/api/health', (_req, res) => {
 app.use('/api/resumes', requireAuth, resumesRouter)
 app.use('/api/job-specs', requireAuth, jobSpecsRouter)
 app.use('/api/comparisons', requireAuth, comparisonsRouter)
+app.use('/api/applications/:id/answers', requireAuth, answersRouter)
+app.use('/api/applications/:id/cover-letter', requireAuth, coverLetterRouter)
+app.use('/api/applications/:id/prepare', requireAuth, prepareRouter)
+app.use('/api/applications/queue', requireAuth, queueRouter)
 app.use('/api/applications', requireAuth, applicationsRouter)
 app.use('/api/extension', requireAuth, extensionRouter)
 app.use('/api/profile', requireAuth, profileRouter)
@@ -39,8 +46,13 @@ app.use(
       res.status(400).json({ error: err.issues[0]?.message ?? 'Invalid request' })
       return
     }
-    const message = err instanceof Error ? err.message : 'Unexpected server error'
-    console.error('[api]', message)
+    const message =
+      err instanceof Error
+        ? err.message
+        : typeof err === 'object' && err !== null && typeof (err as { message?: unknown }).message === 'string'
+          ? (err as { message: string }).message
+          : 'Unexpected server error'
+    console.error('[api]', message, err instanceof Error ? '' : err)
     res.status(500).json({ error: message })
   },
 )

@@ -1,6 +1,7 @@
 import { BOARDS, type KnownBoard } from '../../shared/boards'
 import {
   companyFromPage,
+  controlText,
   descriptionFromPage,
   findApplyButton,
   locationFromPage,
@@ -25,6 +26,38 @@ export interface GenericBoardConfig {
   /** Id of the single job shown, or null when the URL is not a job posting. */
   jobId(url: URL): string | null
   selectors?: BoardSelectors
+  /** Overrides the text check: true when `apply` opens the board's own form. */
+  builtInApply?(apply: HTMLElement | null): boolean
+}
+
+const EXTERNAL_APPLY_TEXT = /\b(?:company(?:'s)? (?:site|website)|external(?:ly)?|employer'?s? (?:site|website))\b/i
+
+/**
+ * For boards whose Apply opens their own profile-based form (PNet, Careers24, CareerJunction):
+ * only an apply link that leaves the board, or says it does, goes to a fillable form.
+ */
+function boardFormUnlessLinkedOut(board: KnownBoard) {
+  return (apply: HTMLElement | null): boolean => {
+    if (!apply) return false
+    if (looksBuiltInApply(apply)) return true
+    if (EXTERNAL_APPLY_TEXT.test(controlText(apply))) return false
+    const href = apply.closest('a')?.getAttribute('href')
+    if (href) {
+      try {
+        const target = new URL(href, window.location.href)
+        if (
+          /^https?:$/.test(target.protocol) &&
+          target.hostname !== window.location.hostname &&
+          !BOARDS[board].host.test(target.hostname)
+        ) {
+          return false
+        }
+      } catch {
+        // unparseable link: treat as the board's own flow
+      }
+    }
+    return true
+  }
 }
 
 /**
@@ -33,7 +66,7 @@ export interface GenericBoardConfig {
  * like a posting still match when they carry JobPosting JSON-LD.
  */
 export function createGenericAdapter(config: GenericBoardConfig): JobBoardAdapter {
-  const { board, jobId, selectors = {} } = config
+  const { board, jobId, selectors = {}, builtInApply = looksBuiltInApply } = config
   const host = BOARDS[board].host
 
   return {
@@ -84,7 +117,7 @@ export function createGenericAdapter(config: GenericBoardConfig): JobBoardAdapte
       return findApplyButton()
     },
     isBuiltInApply() {
-      return looksBuiltInApply(findApplyButton())
+      return builtInApply(findApplyButton())
     },
   }
 }
@@ -189,5 +222,47 @@ export const genericBoardConfigs: GenericBoardConfig[] = [
   {
     board: 'peoplecurated',
     jobId: (url) => pathMatch(url, /\/jobs\/(?!create$)([^/?#]+)\/?$/),
+  },
+  {
+    board: 'pnet',
+    jobId: (url) => pathMatch(url, /--(\d+)(?:-inline)?\.html$/),
+    selectors: {
+      title: ['[data-at="header-job-title"]', '[data-genesis-element="JOB_TITLE"]'],
+      company: ['[data-at="header-company-name"]', '[data-at="metadata-company-name"]'],
+      location: ['[data-at="metadata-location"]'],
+      description: ['[data-at="job-ad-content"]', '.listing-content'],
+      anchor: ['[data-at="apply-button"]'],
+    },
+    builtInApply: boardFormUnlessLinkedOut('pnet'),
+  },
+  {
+    board: 'careers24',
+    jobId: (url) => pathMatch(url, /\/jobs\/adverts\/(\d+)/),
+    selectors: {
+      title: ['.c24-vacancy-title h1', 'h1.job-title'],
+      company: ['.c24-vacancy-company', '[class*="recruiter-name" i]'],
+      location: ['.c24-vacancy-location'],
+      description: ['.c24-vacancy-details', '.v-descrip'],
+    },
+    builtInApply: boardFormUnlessLinkedOut('careers24'),
+  },
+  {
+    board: 'careerjunction',
+    jobId: (url) => pathMatch(url, /-job-(\d+)\.aspx$/i) ?? url.searchParams.get('jobid'),
+    selectors: {
+      title: ['.job-title h1', '#jobTitle'],
+      company: ['.job-company', '#companyName'],
+      location: ['.job-location'],
+      description: ['.job-details', '#jobDescription'],
+    },
+    builtInApply: boardFormUnlessLinkedOut('careerjunction'),
+  },
+  {
+    // A marketplace where companies approach candidates: saved for tracking, never filled.
+    board: 'offerzen',
+    jobId: (url) =>
+      pathMatch(url, /\/companies\/[^/]+\/jobs\/([^/?#]+)/) ??
+      pathMatch(url, /^\/jobs\/([^/?#]+)/),
+    builtInApply: () => true,
   },
 ]

@@ -1,0 +1,59 @@
+<div data-automation-id="applyFlowPage">
+  <ol data-automation-id="progressBar">
+    <li data-automation-id="progressBarCompletedStep"><label>My Information</label></li>
+    <li data-automation-id="progressBarCompletedStep"><label>My Experience</label></li>
+    <li data-automation-id="progressBarActiveStep">
+      <div>current step 3 of 6</div>
+      <label>Application Questions</label>
+    </li>
+    <li data-automation-id="progressBarInactiveStep"><label>Voluntary Disclosures</label></li>
+    <li data-automation-id="progressBarInactiveStep"><label>Self Identify</label></li>
+    <li data-automation-id="progressBarInactiveStep"><label>Review</label></li>
+  </ol>
+  <div data-automation-id="applyFlowPrimaryQuestionsPage">
+    <h2>Application Questions</h2>
+    <div data-automation-id="formField-q1">
+      <label for="q-work">
+        Are you legally allowed to work in South Africa?<abbr title="required">*</abbr>
+      </label>
+      <button type="button" id="q-work" aria-haspopup="listbox" aria-controls="popup-work">
+        Select One
+      </button>
+    </div>
+    <div data-automation-id="formField-q2">
+      <label for="q-licence">Do you have a valid driver's licence?</label>
+      <button type="button" id="q-licence" aria-haspopup="listbox" aria-controls="popup-licence">
+        Select One
+      </button>
+    </div>
+    <div data-automation-id="formField-q3">
+      <label for="q-race">Please select your race (Employment Equity)</label>
+      <button type="button" id="q-race" aria-haspopup="listbox" aria-controls="popup-race">
+        Select One
+      </button>
+    </div>
+    <div data-automation-id="formField-q4">
+      <label for="q-why">Why do you want to join Absa?</label>
+      <textarea id="q-why" maxlength="2000"></textarea>
+    </div>
+  </div>
+  <div role="listbox" id="popup-work" hidden>
+    <div role="option">Yes</div>
+    <div role="option">No</div>
+  </div>
+  <div role="listbox" id="popup-licence" hidden>
+    <div role="option">Yes - Code B</div>
+    <div role="option">Yes - Code C1</div>
+    <div role="option">No</div>
+  </div>
+  <div role="listbox" id="popup-race" hidden>
+    <div role="option">African</div>
+    <div role="option">Coloured</div>
+    <div role="option">Indian</div>
+    <div role="option">White</div>
+  </div>
+  <div data-automation-id="bottom-navigation">
+    <button type="button" data-automation-id="bottom-navigation-back-button">Back</button>
+    <button type="button" data-automation-id="bottom-navigation-next-button">Save and Continue</button>
+  </div>
+</div>

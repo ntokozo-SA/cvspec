@@ -1,7 +1,8 @@
 import { defineManifest } from '@crxjs/vite-plugin'
 import { loadEnv } from 'vite'
 import pkg from './package.json' with { type: 'json' }
-import { BOARDS } from './src/shared/boards.ts'
+import { BOARDS, STATIC_BOARD_IDS } from './src/shared/boards.ts'
+import { OPTIONAL_HOST_PATTERNS } from './src/shared/sites.ts'
 
 function toMatchPattern(raw: string | undefined): string | null {
   if (!raw) return null
@@ -13,10 +14,11 @@ function toMatchPattern(raw: string | undefined): string | null {
   }
 }
 
-const JOB_BOARD_MATCHES = Object.values(BOARDS).flatMap((board) => [...board.matches])
+/** Optional boards are registered at runtime once the user grants access (see sites.ts). */
+export const JOB_BOARD_MATCHES = STATIC_BOARD_IDS.flatMap((id) => [...BOARDS[id].matches])
 
 /** Hiring systems whose application forms CVSpec fills. Embedded forms load in an iframe. */
-const APPLY_FORM_MATCHES = [
+export const APPLY_FORM_MATCHES = [
   'https://boards.greenhouse.io/*',
   'https://job-boards.greenhouse.io/*',
   'https://boards.eu.greenhouse.io/*',
@@ -39,7 +41,7 @@ export default defineManifest(({ mode }) => {
     manifest_version: 3,
     name: 'CVSpec',
     description:
-      'Save jobs from LinkedIn, Indeed and 20 more sites, tailor your resume, and fill Greenhouse and Lever applications with it.',
+      'Save jobs from LinkedIn, Indeed, PNet and 20+ more sites, tailor your resume and cover letter, and fill Greenhouse, Lever and Workday applications with them.',
     version: pkg.version,
     icons: {
       16: 'icons/icon-16.png',
@@ -54,12 +56,17 @@ export default defineManifest(({ mode }) => {
       },
       default_popup: 'src/popup/index.html',
     },
+    options_ui: {
+      page: 'src/options/index.html',
+      open_in_tab: true,
+    },
     background: {
       service_worker: 'src/background/index.ts',
       type: 'module',
     },
     permissions: ['storage', 'activeTab', 'scripting'],
     host_permissions: Array.from(new Set([...apiMatches, ...webMatches])),
+    optional_host_permissions: OPTIONAL_HOST_PATTERNS,
     content_scripts: [
       {
         matches: webMatches,
